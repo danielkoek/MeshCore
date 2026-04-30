@@ -45,6 +45,14 @@ static Adafruit_BME280 BME280;
 static Adafruit_BMP280 BMP280(TELEM_WIRE);
 #endif
 
+#if ENV_INCLUDE_SHT3X
+#ifndef TELEM_SHT3X_ADDRESS
+#define TELEM_SHT3X_ADDRESS 0x44
+#endif
+#include <Adafruit_SHT31.h>
+static Adafruit_SHT31 SHT3X;
+#endif
+
 #if ENV_INCLUDE_SHTC3
 #include <Adafruit_SHTC3.h>
 static Adafruit_SHTC3 SHTC3;
@@ -230,6 +238,16 @@ bool EnvironmentSensorManager::begin() {
   }
   #endif
 
+  #if ENV_INCLUDE_SHT3X
+  if (SHT3X.begin(TELEM_SHT3X_ADDRESS)) {
+    MESH_DEBUG_PRINTLN("Found SHT3x at address: %02X", TELEM_SHT3X_ADDRESS);
+    SHT3X_initialized = true;
+  } else {
+    SHT3X_initialized = false;
+    MESH_DEBUG_PRINTLN("SHT3x was not found at I2C address %02X", TELEM_SHT3X_ADDRESS);
+  }
+  #endif
+
   #if ENV_INCLUDE_SHTC3
   if (SHTC3.begin(TELEM_WIRE)) {
     MESH_DEBUG_PRINTLN("Found sensor: SHTC3");
@@ -404,6 +422,17 @@ bool EnvironmentSensorManager::querySensors(uint8_t requester_permissions, Cayen
       telemetry.addTemperature(TELEM_CHANNEL_SELF, BMP280.readTemperature());
       telemetry.addBarometricPressure(TELEM_CHANNEL_SELF, BMP280.readPressure()/100);
       telemetry.addAltitude(TELEM_CHANNEL_SELF, BMP280.readAltitude(TELEM_BMP280_SEALEVELPRESSURE_HPA));
+    }
+    #endif
+
+    #if ENV_INCLUDE_SHT3X
+    if (SHT3X_initialized) {
+      float sht3x_temp = SHT3X.readTemperature();
+      float sht3x_humidity = SHT3X.readHumidity();
+      if (!isnan(sht3x_temp) && !isnan(sht3x_humidity)) {
+        telemetry.addTemperature(TELEM_CHANNEL_SELF, sht3x_temp);
+        telemetry.addRelativeHumidity(TELEM_CHANNEL_SELF, sht3x_humidity);
+      }
     }
     #endif
 
