@@ -3,7 +3,6 @@
 #include <Arduino.h>
 #include <Mesh.h>
 #include <helpers/IdentityStore.h>
-#include <Grove_Motor_Driver_TB6612FNG.h>
 
 #if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
   #include <InternalFileSystem.h>
@@ -13,11 +12,14 @@
   #include <SPIFFS.h>
 #endif
 
+// Forward declare MotorDriver to avoid include order issues
+class MotorDriver;
+
 #ifndef MOTOR_I2C_ADDR
   #define MOTOR_I2C_ADDR 0x14   // TB6612FNG default I2C address
 #endif
 #ifndef MOTOR_CHANNEL
-  #define MOTOR_CHANNEL MOTOR_CHA  // Which motor channel (MOTOR_CHA or MOTOR_CHB)
+  #define MOTOR_CHANNEL 0  // Which motor channel (0=MOTOR_CHA, 1=MOTOR_CHB)
 #endif
 
 #define MAX_SCHEDULE_ENTRIES      16

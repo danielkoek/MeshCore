@@ -34,6 +34,7 @@
 
 #include "SensorMesh.h"                    // from examples/simple_sensor/
 #include "WaterSchedulerSolenoid.h"
+#include <Grove_Motor_Driver_TB6612FNG.h>
 
 // ---------------------------------------------------------------------------
 // MyMesh – extends SensorMesh with solenoid scheduler behaviour
@@ -104,8 +105,8 @@ void setup() {
   fast_rng.begin(radio_driver.getRngSeed());
 
   // Mount filesystem and load identity
-  InternalFileSystem.begin();
-  FILESYSTEM* fs = &InternalFileSystem;
+  InternalFS.begin();
+  FILESYSTEM* fs = &InternalFS;
 
   IdentityStore store(*fs, "/identity");
   if (!store.load("_main", the_mesh.self_id)) {

@@ -1,5 +1,14 @@
 #include "WaterSchedulerSolenoid.h"
 #include <RTClib.h>
+#include <Grove_Motor_Driver_TB6612FNG.h>
+
+// File mode constants (from Adafruit_LittleFS)
+#ifndef FILE_O_READ
+  #define FILE_O_READ  0x00
+#endif
+#ifndef FILE_O_WRITE
+  #define FILE_O_WRITE 0x02
+#endif
 
 static const char* const DAY_NAMES[] = {
   "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Daily"
@@ -218,7 +227,7 @@ void WaterSchedulerSolenoid::restoreState(mesh::RTCClock* rtc) {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::saveSchedule() {
   if (!_fs) return;
-  File f = _fs->open(SCHED_FILE, FILE_WRITE);
+  File f = _fs->open(SCHED_FILE, FILE_O_WRITE);
   if (!f) return;
   uint8_t cnt = (uint8_t)_count;
   f.write(&cnt, 1);
@@ -233,7 +242,7 @@ void WaterSchedulerSolenoid::loadSchedule() {
   _count = 0;
   if (!_fs || !_fs->exists(SCHED_FILE)) return;
 
-  File f = _fs->open(SCHED_FILE, FILE_READ);
+  File f = _fs->open(SCHED_FILE, FILE_O_READ);
   if (!f) return;
 
   uint8_t cnt = 0;
@@ -248,7 +257,7 @@ void WaterSchedulerSolenoid::loadSchedule() {
 
 void WaterSchedulerSolenoid::saveOverride() {
   if (!_fs) return;
-  File f = _fs->open(OVERRIDE_FILE, FILE_WRITE);
+  File f = _fs->open(OVERRIDE_FILE, FILE_O_WRITE);
   if (!f) return;
   uint8_t v = (uint8_t)_override;
   f.write(&v, 1);
@@ -262,7 +271,7 @@ void WaterSchedulerSolenoid::loadOverride() {
   _override_expiry_millis = 0;
   if (!_fs || !_fs->exists(OVERRIDE_FILE)) return;
 
-  File f = _fs->open(OVERRIDE_FILE, FILE_READ);
+  File f = _fs->open(OVERRIDE_FILE, FILE_O_READ);
   if (!f) return;
   uint8_t v = 0;
   if (f.read(&v, 1) == 1 && v <= 2) {

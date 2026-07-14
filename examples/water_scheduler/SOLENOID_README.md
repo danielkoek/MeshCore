@@ -31,9 +31,9 @@ A MeshCore-based water scheduler using a **latching solenoid valve** with **TB66
 -D MOTOR_I2C_ADDR=0x14
 ```
 
-Motor channel (MOTOR_CHA or MOTOR_CHB) can be changed:
+Motor channel (0=MOTOR_CHA, 1=MOTOR_CHB) can be changed:
 ```ini
--D MOTOR_CHANNEL=MOTOR_CHA
+-D MOTOR_CHANNEL=0
 ```
 
 ## Solenoid Pulse Logic
