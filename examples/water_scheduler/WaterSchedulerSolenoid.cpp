@@ -257,6 +257,7 @@ void WaterSchedulerSolenoid::restoreState(mesh::RTCClock* rtc) {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::saveSchedule() {
   if (!_fs) return;
+  _fs->remove(SCHED_FILE);
   File f = _fs->open(SCHED_FILE, FILE_O_WRITE);
   if (!f) return;
   uint8_t cnt = (uint8_t)_count;
@@ -287,6 +288,7 @@ void WaterSchedulerSolenoid::loadSchedule() {
 
 void WaterSchedulerSolenoid::saveOverride() {
   if (!_fs) return;
+  _fs->remove(OVERRIDE_FILE);
   File f = _fs->open(OVERRIDE_FILE, FILE_O_WRITE);
   if (!f) return;
   uint8_t v = (uint8_t)_override;
