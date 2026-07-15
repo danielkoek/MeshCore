@@ -12,14 +12,16 @@
   #include <SPIFFS.h>
 #endif
 
-// Forward declare MotorDriver to avoid include order issues
-class MotorDriver;
-
 #ifndef MOTOR_I2C_ADDR
   #define MOTOR_I2C_ADDR 0x14   // TB6612FNG default I2C address
 #endif
-#ifndef MOTOR_CHANNEL
-  #define MOTOR_CHANNEL 0  // Which motor channel (0=MOTOR_CHA, 1=MOTOR_CHB)
+// Solenoid is driven on both channels in parallel (matches validated .ino).
+// Single-channel wiring may replace this later.
+#ifndef MOTOR_CHANNEL_A
+  #define MOTOR_CHANNEL_A 0  // MOTOR_CHA
+#endif
+#ifndef MOTOR_CHANNEL_B
+  #define MOTOR_CHANNEL_B 1  // MOTOR_CHB
 #endif
 
 #define MAX_SCHEDULE_ENTRIES      16
@@ -64,15 +66,14 @@ enum OverrideMode : uint8_t {
 // ---------------------------------------------------------------------------
 class WaterSchedulerSolenoid {
 public:
-  WaterSchedulerSolenoid() : _fs(nullptr), _motor(nullptr),
+  WaterSchedulerSolenoid() : _fs(nullptr),
                              _count(0), _rtc(nullptr), _override(OVERRIDE_AUTO),
                              _override_expiry_unix(0), _override_expiry_millis(0),
                              _solenoid_open(false), _last_minute(-1),
                              _pulse_end_millis(0), _pulse_active(false) {}
 
   // Call once after filesystem is mounted.
-  // motor: pointer to initialized MotorDriver instance
-  void begin(FILESYSTEM* fs, mesh::RTCClock* rtc, MotorDriver* motor);
+  void begin(FILESYSTEM* fs, mesh::RTCClock* rtc);
 
   // Call every loop iteration, passing the shared RTC clock.
   void loop(mesh::RTCClock* rtc);
@@ -86,7 +87,6 @@ public:
 
 private:
   FILESYSTEM*   _fs;
-  MotorDriver*  _motor;
   ScheduleEntry _entries[MAX_SCHEDULE_ENTRIES];
   int           _count;
   mesh::RTCClock* _rtc;

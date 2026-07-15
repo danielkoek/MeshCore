@@ -31,22 +31,23 @@ A MeshCore-based water scheduler using a **latching solenoid valve** with **TB66
 -D MOTOR_I2C_ADDR=0x14
 ```
 
-Motor channel (0=MOTOR_CHA, 1=MOTOR_CHB) can be changed:
+Both channels are driven in parallel (0=MOTOR_CHA, 1=MOTOR_CHB), can be changed:
 ```ini
--D MOTOR_CHANNEL=0
+-D MOTOR_CHANNEL_A=0
+-D MOTOR_CHANNEL_B=1
 ```
 
 ## Solenoid Pulse Logic
 
-I2C commands via Grove_Motor_Driver_TB6612FNG library:
+Raw I2C commands to both channels of the TB6612FNG:
 
 **OPEN solenoid:**
-- Send `dcMotorRun(MOTOR_CHA, +255)` (clockwise, full speed)
+- Send CCW command (counter-clockwise, full speed) to CHA and CHB
 - Pulse for `SOLENOID_PULSE_DURATION` ms (default 500ms)
 - Latching solenoid clicks open and stays open
 
 **CLOSE solenoid:**
-- Send `dcMotorRun(MOTOR_CHA, -255)` (counter-clockwise, full speed)
+- Send CW command (clockwise, full speed) to CHA and CHB
 - Pulse for `SOLENOID_PULSE_DURATION` ms (default 500ms)
 - Latching solenoid clicks closed and stays closed
 
