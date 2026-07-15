@@ -379,6 +379,11 @@ uint8_t SensorMesh::handleLoginReq(const mesh::Identity& sender, const uint8_t* 
 void SensorMesh::handleCommand(uint32_t sender_timestamp, char* command, char* reply) {
   while (*command == ' ') command++;   // skip leading spaces
 
+  {  // trim trailing spaces
+    int len = strlen(command);
+    while (len > 0 && command[len - 1] == ' ') command[--len] = 0;
+  }
+
   if (strlen(command) > 4 && command[2] == '|') {  // optional prefix (for companion radio CLI)
     memcpy(reply, command, 3);  // reflect the prefix back
     reply += 3;
