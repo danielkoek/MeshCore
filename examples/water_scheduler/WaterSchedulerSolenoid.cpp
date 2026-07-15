@@ -60,8 +60,6 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
 // open=false: CW (forward) to CLOSE valve
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorDrive(bool open) {
-  if (!_motor) return;
-
   uint8_t cmd = open ? CMD_CCW : CMD_CW;
   uint8_t speed = SOLENOID_SPEED;
 
@@ -85,8 +83,6 @@ void WaterSchedulerSolenoid::motorDrive(bool open) {
 // motorStop()  – stop motor via I2C (both channels)
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorStop() {
-  if (!_motor) return;
-
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(CMD_STOP);
   Wire.write((uint8_t)MOTOR_CHANNEL_A);

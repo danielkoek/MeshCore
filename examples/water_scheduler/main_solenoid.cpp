@@ -43,22 +43,20 @@ class MyMesh : public SensorMesh {
 public:
   MyMesh(mesh::MainBoard& board, mesh::Radio& radio, mesh::MillisecondClock& ms,
          mesh::RNG& rng, mesh::RTCClock& rtc, mesh::MeshTables& tables)
-    : SensorMesh(board, radio, ms, rng, rtc, tables), _motor(nullptr) {}
+    : SensorMesh(board, radio, ms, rng, rtc, tables) {}
 
   void loopScheduler() {
     _scheduler.loop(getRTCClock());
   }
 
-  void beginScheduler(FILESYSTEM* fs, MotorDriver* motor) {
-    _motor = motor;
-    _scheduler.begin(fs, getRTCClock(), motor);
+  void beginScheduler(FILESYSTEM* fs) {
+    _scheduler.begin(fs, getRTCClock());
   }
 
   bool getSolenoidState() const { return _scheduler.getSolenoidState(); }
 
 protected:
   WaterSchedulerSolenoid _scheduler;
-  MotorDriver* _motor;
 
   void onSensorDataRead() override {
     // Custom logic for sensor reads if needed
@@ -134,7 +132,7 @@ void setup() {
   sensors.begin();
 
   // Initialise the solenoid scheduler (uses direct I2C commands)
-  the_mesh.beginScheduler(fs, nullptr);
+  the_mesh.beginScheduler(fs);
 
   the_mesh.begin(fs);
 
