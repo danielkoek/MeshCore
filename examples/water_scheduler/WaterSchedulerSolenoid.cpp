@@ -1,6 +1,13 @@
 #include "WaterSchedulerSolenoid.h"
 #include <RTClib.h>
-#include <Grove_Motor_Driver_TB6612FNG.h>
+#include <Wire.h>
+
+// TB6612FNG motor driver I2C commands
+const uint8_t CMD_BRAKE = 0x00;
+const uint8_t CMD_STOP = 0x01;
+const uint8_t CMD_CW = 0x02;   // Clockwise
+const uint8_t CMD_CCW = 0x03;  // Counter-clockwise
+const uint8_t CMD_STANDBY = 0x04;
 
 // File mode constants (from Adafruit_LittleFS)
 #ifndef FILE_O_READ
@@ -27,10 +34,18 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc, MotorDri
   _rtc = rtc;
   _motor = motor;
 
-  // Ensure motor is in safe state
+  // Initialize I2C motor driver to NOT_STANDBY state (0x05)
   if (_motor) {
-    _motor->notStandby();
-    _motor->dcMotorStop((motor_channel_type_t)MOTOR_CHANNEL);
+    Wire.beginTransmission(MOTOR_I2C_ADDR);
+    Wire.write(0x05);  // NOT_STANDBY command
+    Wire.endTransmission();
+    delay(10);
+
+    // Ensure motor is stopped
+    Wire.beginTransmission(MOTOR_I2C_ADDR);
+    Wire.write(CMD_STOP);
+    Wire.write((uint8_t)MOTOR_CHANNEL);
+    Wire.endTransmission();
   }
 
   _solenoid_open = false;
@@ -50,8 +65,14 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc, MotorDri
 void WaterSchedulerSolenoid::motorDrive(bool open) {
   if (!_motor) return;
 
-  int16_t speed = open ? SOLENOID_SPEED : -SOLENOID_SPEED;
-  _motor->dcMotorRun((motor_channel_type_t)MOTOR_CHANNEL, speed);
+  uint8_t cmd = open ? CMD_CW : CMD_CCW;
+  uint8_t speed = SOLENOID_SPEED;
+
+  Wire.beginTransmission(MOTOR_I2C_ADDR);
+  Wire.write(cmd);
+  Wire.write((uint8_t)MOTOR_CHANNEL);
+  Wire.write(speed);
+  Wire.endTransmission();
 
   _pulse_active = true;
   _pulse_end_millis = millis() + SOLENOID_PULSE_DURATION;
@@ -62,7 +83,12 @@ void WaterSchedulerSolenoid::motorDrive(bool open) {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorStop() {
   if (!_motor) return;
-  _motor->dcMotorStop((motor_channel_type_t)MOTOR_CHANNEL);
+
+  Wire.beginTransmission(MOTOR_I2C_ADDR);
+  Wire.write(CMD_STOP);
+  Wire.write((uint8_t)MOTOR_CHANNEL);
+  Wire.endTransmission();
+
   _pulse_active = false;
 }
 

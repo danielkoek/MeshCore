@@ -34,7 +34,7 @@
 
 #include "SensorMesh.h"                    // from examples/simple_sensor/
 #include "WaterSchedulerSolenoid.h"
-#include <Grove_Motor_Driver_TB6612FNG.h>
+#include <Wire.h>
 
 // ---------------------------------------------------------------------------
 // MyMesh – extends SensorMesh with solenoid scheduler behaviour
@@ -84,7 +84,6 @@ SimpleMeshTables tables;
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
 static char command[160];
-static MotorDriver motor_driver;
 
 void halt() { while (1) ; }
 
@@ -128,16 +127,14 @@ void setup() {
 
   command[0] = 0;
 
-  // Initialise I2C motor driver
+  // Initialise I2C for motor driver communication
   Wire.begin();
-  motor_driver.init(MOTOR_I2C_ADDR);
-  motor_driver.notStandby();
 
   // Initialise environment sensors (if any)
   sensors.begin();
 
-  // Initialise the solenoid scheduler with motor driver
-  the_mesh.beginScheduler(fs, &motor_driver);
+  // Initialise the solenoid scheduler (uses direct I2C commands)
+  the_mesh.beginScheduler(fs, nullptr);
 
   the_mesh.begin(fs);
 
