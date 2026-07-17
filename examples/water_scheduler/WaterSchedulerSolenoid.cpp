@@ -3,8 +3,6 @@
 #include <Wire.h>
 
 // TB6612FNG motor driver I2C commands
-const uint8_t CMD_BRAKE = 0x00;
-const uint8_t CMD_STOP = 0x01;
 const uint8_t CMD_CW = 0x02;   // Clockwise
 const uint8_t CMD_CCW = 0x03;  // Counter-clockwise
 const uint8_t CMD_STANDBY = 0x04;
@@ -33,20 +31,15 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
   _fs = fs;
   _rtc = rtc;
 
-  // NOTE: board defaults to running mode on power-up. Sending NOT_STANDBY
-  // (0x05) leaves the board acking I2C but ignoring CW/CCW writes, so only
-  // send CMD_STANDBY (0x04) as a no-op init, then ensure motor is stopped.
+  // Board defaults to running mode on power-up; must send CMD_STANDBY once
+  // so it will start accepting CW/CCW writes.
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(CMD_STANDBY);
   Wire.write((uint8_t)0);
   Wire.endTransmission();
-  delay(10);
-
-  motorStop();
+  delay(1);
 
   _solenoid_open = false;
-  _pulse_active = false;
-  _pulse_end_millis = 0;
   _last_minute = -1;
 
   loadSchedule();
@@ -54,57 +47,32 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
 }
 
 // ---------------------------------------------------------------------------
-// motorDrive()  – send directional pulse to solenoid via I2C motor driver
-// Drives both channels in parallel (matches validated .ino test sketch).
+// motorDrive()  – pulse solenoid in given direction for SOLENOID_PULSE_DURATION,
+// then return driver to standby. Drives both channels in parallel.
 // open=true: CCW (backward) to OPEN valve
 // open=false: CW (forward) to CLOSE valve
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorDrive(bool open) {
   uint8_t cmd = open ? CMD_CCW : CMD_CW;
-  uint8_t speed = SOLENOID_SPEED;
 
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_A);
-  Wire.write(speed);
+  Wire.write(SOLENOID_SPEED);
   Wire.endTransmission();
 
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_B);
-  Wire.write(speed);
+  Wire.write(SOLENOID_SPEED);
   Wire.endTransmission();
 
-  _pulse_active = true;
-  _pulse_end_millis = millis() + SOLENOID_PULSE_DURATION;
-}
-
-// ---------------------------------------------------------------------------
-// motorStop()  – stop motor via I2C (both channels)
-// ---------------------------------------------------------------------------
-void WaterSchedulerSolenoid::motorStop() {
-  Wire.beginTransmission(MOTOR_I2C_ADDR);
-  Wire.write(CMD_STOP);
-  Wire.write((uint8_t)MOTOR_CHANNEL_A);
-  Wire.endTransmission();
+  delay(SOLENOID_PULSE_DURATION);
 
   Wire.beginTransmission(MOTOR_I2C_ADDR);
-  Wire.write(CMD_STOP);
-  Wire.write((uint8_t)MOTOR_CHANNEL_B);
+  Wire.write(CMD_STANDBY);
+  Wire.write((uint8_t)0);
   Wire.endTransmission();
-
-  _pulse_active = false;
-}
-
-// ---------------------------------------------------------------------------
-// updatePulse()  – check if pulse duration has elapsed and stop if so
-// ---------------------------------------------------------------------------
-void WaterSchedulerSolenoid::updatePulse() {
-  if (!_pulse_active) return;
-
-  if ((int32_t)(millis() - _pulse_end_millis) >= 0) {
-    motorStop();
-  }
 }
 
 // ---------------------------------------------------------------------------
@@ -164,9 +132,6 @@ void WaterSchedulerSolenoid::loop(mesh::RTCClock* rtc) {
   if (rtc) {
     _rtc = rtc;
   }
-
-  // Check if pulse duration has elapsed
-  updatePulse();
 
   expireOverrideIfNeeded();
 

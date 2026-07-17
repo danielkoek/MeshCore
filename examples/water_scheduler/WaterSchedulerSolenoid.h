@@ -28,7 +28,7 @@
 #define SCHED_FILE                "/solenoid_sched"
 #define OVERRIDE_FILE             "/solenoid_ovrd"
 #define OVERRIDE_DURATION_SECS    1800
-#define SOLENOID_PULSE_DURATION   500    // milliseconds to drive motor
+#define SOLENOID_PULSE_DURATION   200    // milliseconds to drive motor
 #define SOLENOID_SPEED            255    // Full speed (0-255)
 
 // day_of_week: 0=Sun, 1=Mon, 2=Tue, 3=Wed, 4=Thu, 5=Fri, 6=Sat, 7=Daily
@@ -69,8 +69,7 @@ public:
   WaterSchedulerSolenoid() : _fs(nullptr),
                              _count(0), _rtc(nullptr), _override(OVERRIDE_AUTO),
                              _override_expiry_unix(0), _override_expiry_millis(0),
-                             _solenoid_open(false), _last_minute(-1),
-                             _pulse_end_millis(0), _pulse_active(false) {}
+                             _solenoid_open(false), _last_minute(-1) {}
 
   // Call once after filesystem is mounted.
   void begin(FILESYSTEM* fs, mesh::RTCClock* rtc);
@@ -95,12 +94,8 @@ private:
   uint32_t      _override_expiry_millis;
   bool          _solenoid_open;
   int           _last_minute;
-  uint32_t      _pulse_end_millis;   // when current pulse should stop
-  bool          _pulse_active;       // pulse in progress
 
-  void motorDrive(bool open);                     // send pulse in specified direction
-  void motorStop();                               // stop motor
-  void updatePulse();                             // check if pulse should stop
+  void motorDrive(bool open);                     // pulse solenoid then return to standby
   void setSolenoid(bool open);                    // command solenoid to open/close
   void setOverrideExpiry();
   void expireOverrideIfNeeded();
