@@ -31,13 +31,6 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
   _fs = fs;
   _rtc = rtc;
 
-  // Board defaults to running mode on power-up; must send CMD_STANDBY once
-  // so it will start accepting CW/CCW writes.
-  Wire.beginTransmission(MOTOR_I2C_ADDR);
-  Wire.write(CMD_STANDBY);
-  Wire.write((uint8_t)0);
-  Wire.endTransmission();
-  delay(1);
 
   _solenoid_open = false;
   _last_minute = -1;
@@ -45,7 +38,13 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
   loadSchedule();
   loadOverride();
 }
-
+void WaterSchedulerSolenoid::standby() {
+  Wire.beginTransmission(MOTOR_I2C_ADDR);
+  Wire.write(CMD_STANDBY);
+  Wire.write((uint8_t)0);
+  Wire.endTransmission();
+  delay(1);
+}
 // ---------------------------------------------------------------------------
 // motorDrive()  – pulse solenoid in given direction for SOLENOID_PULSE_DURATION,
 // then return driver to standby. Drives both channels in parallel.
@@ -54,25 +53,20 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorDrive(bool open) {
   uint8_t cmd = open ? CMD_CCW : CMD_CW;
-
+  standby();
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_A);
   Wire.write(SOLENOID_SPEED);
   Wire.endTransmission();
-
+  standby();
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_B);
   Wire.write(SOLENOID_SPEED);
   Wire.endTransmission();
-
   delay(SOLENOID_PULSE_DURATION);
-
-  Wire.beginTransmission(MOTOR_I2C_ADDR);
-  Wire.write(CMD_STANDBY);
-  Wire.write((uint8_t)0);
-  Wire.endTransmission();
+  standby();
 }
 
 // ---------------------------------------------------------------------------

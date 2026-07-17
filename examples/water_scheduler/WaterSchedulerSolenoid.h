@@ -94,7 +94,7 @@ private:
   uint32_t      _override_expiry_millis;
   bool          _solenoid_open;
   int           _last_minute;
-
+  void standby();                                 // put motor driver into standby
   void motorDrive(bool open);                     // pulse solenoid then return to standby
   void setSolenoid(bool open);                    // command solenoid to open/close
   void setOverrideExpiry();
