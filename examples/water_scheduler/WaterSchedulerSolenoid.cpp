@@ -2,6 +2,15 @@
 #include <RTClib.h>
 #include <Wire.h>
 
+// Debug helper – prints only when MESH_DEBUG is defined
+#ifdef MESH_DEBUG
+  #define SOL_DEBUG(msg)       do { Serial.print("[SOL] "); Serial.println(msg); } while(0)
+  #define SOL_DEBUG2(a,b)      do { Serial.print("[SOL] "); Serial.print(a); Serial.println(b); } while(0)
+#else
+  #define SOL_DEBUG(msg)
+  #define SOL_DEBUG2(a,b)
+#endif
+
 // TB6612FNG motor driver I2C commands
 const uint8_t CMD_CW = 0x02;   // Clockwise
 const uint8_t CMD_CCW = 0x03;  // Counter-clockwise
@@ -31,18 +40,22 @@ void WaterSchedulerSolenoid::begin(FILESYSTEM* fs, mesh::RTCClock* rtc) {
   _fs = fs;
   _rtc = rtc;
 
-
   _solenoid_open = false;
   _last_minute = -1;
 
   loadSchedule();
+  SOL_DEBUG2("Schedule loaded, entries: ", _count);
   loadOverride();
+  SOL_DEBUG2("Override mode: ", (int)_override);
 }
 void WaterSchedulerSolenoid::standby() {
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(CMD_STANDBY);
   Wire.write((uint8_t)0);
-  Wire.endTransmission();
+  uint8_t err = Wire.endTransmission();
+  if (err != 0) {
+    SOL_DEBUG2("I2C standby error: ", err);
+  }
   delay(1);
 }
 // ---------------------------------------------------------------------------
@@ -53,20 +66,24 @@ void WaterSchedulerSolenoid::standby() {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::motorDrive(bool open) {
   uint8_t cmd = open ? CMD_CCW : CMD_CW;
+  SOL_DEBUG2("motorDrive: ", open ? "OPEN (CCW)" : "CLOSE (CW)");
   standby();
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_A);
   Wire.write(SOLENOID_SPEED);
-  Wire.endTransmission();
+  uint8_t errA = Wire.endTransmission();
+  if (errA != 0) SOL_DEBUG2("I2C CH_A error: ", errA);
   standby();
   Wire.beginTransmission(MOTOR_I2C_ADDR);
   Wire.write(cmd);
   Wire.write((uint8_t)MOTOR_CHANNEL_B);
   Wire.write(SOLENOID_SPEED);
-  Wire.endTransmission();
+  uint8_t errB = Wire.endTransmission();
+  if (errB != 0) SOL_DEBUG2("I2C CH_B error: ", errB);
   delay(SOLENOID_PULSE_DURATION);
   standby();
+  SOL_DEBUG("motorDrive complete");
 }
 
 // ---------------------------------------------------------------------------
@@ -75,8 +92,12 @@ void WaterSchedulerSolenoid::motorDrive(bool open) {
 // If target state differs, sends pulse.
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::setSolenoid(bool open) {
-  if (_solenoid_open == open) return;  // already in target state
+  if (_solenoid_open == open) {
+    SOL_DEBUG2("setSolenoid: already ", open ? "OPEN" : "CLOSED");
+    return;  // already in target state
+  }
 
+  SOL_DEBUG2("setSolenoid: switching to ", open ? "OPEN" : "CLOSED");
   _solenoid_open = open;
   motorDrive(open);
 }
@@ -129,16 +150,23 @@ void WaterSchedulerSolenoid::loop(mesh::RTCClock* rtc) {
 
   expireOverrideIfNeeded();
 
-  if (!rtc) return;
+  if (!rtc) {
+    SOL_DEBUG("loop: no RTC, skipping");
+    return;
+  }
 
   uint32_t now_unix = rtc->getCurrentTime();
-  if (now_unix < 100000UL) return;    // RTC not set yet
+  if (now_unix < 100000UL) {
+    SOL_DEBUG2("loop: RTC not set yet, unix=", now_unix);
+    return;    // RTC not set yet
+  }
 
   DateTime dt(now_unix);
   int current_minute = (int)dt.hour() * 60 + (int)dt.minute();
 
   if (_last_minute == -1) {
     // First valid call after boot: restore the solenoid to expected state
+    SOL_DEBUG("loop: first valid RTC tick, restoring state");
     restoreState(rtc);
     _last_minute = current_minute;
     return;
@@ -173,9 +201,10 @@ void WaterSchedulerSolenoid::checkSchedule(uint8_t dow, uint8_t hour, uint8_t mi
 // scheduled action, then applies it.
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::restoreState(mesh::RTCClock* rtc) {
-  if (_override == OVERRIDE_OPEN)  { setSolenoid(true);  return; }
-  if (_override == OVERRIDE_CLOSE) { setSolenoid(false); return; }
-  if (_count == 0)                 { setSolenoid(false); return; }
+  SOL_DEBUG2("restoreState: override=", (int)_override);
+  if (_override == OVERRIDE_OPEN)  { SOL_DEBUG("restoreState: override OPEN");  setSolenoid(true);  return; }
+  if (_override == OVERRIDE_CLOSE) { SOL_DEBUG("restoreState: override CLOSE"); setSolenoid(false); return; }
+  if (_count == 0)                 { SOL_DEBUG("restoreState: no entries, defaulting CLOSED"); setSolenoid(false); return; }
 
   uint32_t now_unix = rtc->getCurrentTime();
   DateTime dt(now_unix);
@@ -209,6 +238,7 @@ void WaterSchedulerSolenoid::restoreState(mesh::RTCClock* rtc) {
   }
 
   setSolenoid(best_action == 1);
+  SOL_DEBUG2("restoreState: resolved to ", best_action == 1 ? "OPEN" : "CLOSED");
 }
 
 // ---------------------------------------------------------------------------
@@ -230,10 +260,11 @@ void WaterSchedulerSolenoid::saveSchedule() {
 
 void WaterSchedulerSolenoid::loadSchedule() {
   _count = 0;
-  if (!_fs || !_fs->exists(SCHED_FILE)) return;
+  if (!_fs) { SOL_DEBUG("loadSchedule: no filesystem"); return; }
+  if (!_fs->exists(SCHED_FILE)) { SOL_DEBUG("loadSchedule: file not found"); return; }
 
   File f = _fs->open(SCHED_FILE, FILE_O_READ);
-  if (!f) return;
+  if (!f) { SOL_DEBUG("loadSchedule: failed to open file"); return; }
 
   uint8_t cnt = 0;
   if (f.read(&cnt, 1) == 1 && cnt <= MAX_SCHEDULE_ENTRIES) {
@@ -260,7 +291,8 @@ void WaterSchedulerSolenoid::loadOverride() {
   _override = OVERRIDE_AUTO;
   _override_expiry_unix = 0;
   _override_expiry_millis = 0;
-  if (!_fs || !_fs->exists(OVERRIDE_FILE)) return;
+  if (!_fs) { SOL_DEBUG("loadOverride: no filesystem"); return; }
+  if (!_fs->exists(OVERRIDE_FILE)) { SOL_DEBUG("loadOverride: file not found"); return; }
 
   File f = _fs->open(OVERRIDE_FILE, FILE_O_READ);
   if (!f) return;

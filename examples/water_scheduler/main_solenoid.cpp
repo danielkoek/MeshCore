@@ -35,6 +35,16 @@
 #include "SensorMesh.h"                    // from examples/simple_sensor/
 #include "WaterSchedulerSolenoid.h"
 #include <Wire.h>
+#include <helpers/ui/MomentaryButton.h>
+
+// Debug helper – prints only when MESH_DEBUG is defined
+#ifdef MESH_DEBUG
+  #define SOL_DEBUG(msg)       do { Serial.print("[SOL] "); Serial.println(msg); } while(0)
+  #define SOL_DEBUG2(a,b)      do { Serial.print("[SOL] "); Serial.print(a); Serial.println(b); } while(0)
+#else
+  #define SOL_DEBUG(msg)
+  #define SOL_DEBUG2(a,b)
+#endif
 
 // ---------------------------------------------------------------------------
 // MyMesh – extends SensorMesh with solenoid scheduler behaviour
@@ -54,6 +64,19 @@ public:
   }
 
   bool getSolenoidState() const { return _scheduler.getSolenoidState(); }
+
+  void toggleSolenoid() {
+    char cmd[20];
+    char reply[160];
+    reply[0] = 0;
+    if (_scheduler.getSolenoidState()) {
+      strcpy(cmd, "solenoid close");
+    } else {
+      strcpy(cmd, "solenoid open");
+    }
+    _scheduler.handleCommand(0, cmd, reply);
+    SOL_DEBUG2("Button toggle: ", reply);
+  }
 
 protected:
   WaterSchedulerSolenoid _scheduler;
@@ -81,6 +104,10 @@ SimpleMeshTables tables;
 
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
+#ifdef PIN_USER_BTN
+MomentaryButton user_btn(PIN_USER_BTN, 1000, true, true);  // 1s long-press, active-LOW, pullup
+#endif
+
 static char command[160];
 
 void halt() { while (1) ; }
@@ -92,20 +119,23 @@ void setup() {
   Serial.begin(115200);
   delay(1000);
 
-  board.begin();
+  board.begin();   // also calls Wire.setPins() + Wire.begin() for remapped I2C
+  SOL_DEBUG("Board init done");
 
   if (!radio_init()) {
-    MESH_DEBUG_PRINTLN("Radio init failed!");
+    SOL_DEBUG("ERROR: Radio init failed!");
     halt();
   }
+  SOL_DEBUG("Radio init done");
 
   fast_rng.begin(radio_driver.getRngSeed());
 
   // Mount filesystem and load identity
   InternalFS.begin();
   FILESYSTEM* fs = &InternalFS;
+  SOL_DEBUG("Filesystem mounted");
 
-  IdentityStore store(*fs, "/identity");
+  IdentityStore store(InternalFS, "");   // nRF52 uses empty path (no subdirectory)
   if (!store.load("_main", the_mesh.self_id)) {
     MESH_DEBUG_PRINTLN("Generating new keypair");
     the_mesh.self_id = radio_new_identity();
@@ -125,23 +155,45 @@ void setup() {
 
   command[0] = 0;
 
-  // Initialise I2C for motor driver communication
-  Wire.begin();
+  // NOTE: Wire.begin() already called by board.begin() with remapped pins (D6=SCL, D7=SDA).
+  // Do NOT call Wire.begin() again here – it would reset to default pins (D4/D5).
+
+  // Scan I2C bus for motor driver
+#ifdef MESH_DEBUG
+  SOL_DEBUG("I2C scan for motor driver...");
+  Wire.beginTransmission(MOTOR_I2C_ADDR);
+  uint8_t i2c_err = Wire.endTransmission();
+  if (i2c_err == 0) {
+    SOL_DEBUG2("Motor driver found at 0x", String(MOTOR_I2C_ADDR, HEX));
+  } else {
+    SOL_DEBUG2("Motor driver NOT found at 0x", String(MOTOR_I2C_ADDR, HEX));
+    SOL_DEBUG2("  I2C error code: ", i2c_err);
+  }
+#endif
 
   // Initialise environment sensors (if any)
   sensors.begin();
+  SOL_DEBUG("Sensors init done");
 
   // Initialise the solenoid scheduler (uses direct I2C commands)
   the_mesh.beginScheduler(fs);
+  SOL_DEBUG("Scheduler init done");
 
   the_mesh.begin(fs);
+  SOL_DEBUG("Mesh begin done");
 
 #if ENABLE_ADVERT_ON_BOOT == 1
   the_mesh.sendSelfAdvertisement(16000, false);
 #endif
 
+#ifdef PIN_USER_BTN
+  user_btn.begin();
+  SOL_DEBUG("User button init done");
+#endif
+
   Serial.println("Solenoid Scheduler ready.");
   Serial.println("Commands: solenoid open|close|auto|status  |  schedule add|del|list|clear");
+  Serial.println("Button: 1x=flood advert, 2x=toggle solenoid");
 }
 
 // ---------------------------------------------------------------------------
@@ -180,4 +232,18 @@ void loop() {
   the_mesh.loopScheduler();   // check solenoid schedule every minute
   sensors.loop();
   rtc_clock.tick();
+
+#ifdef PIN_USER_BTN
+  int btn_ev = user_btn.check();
+  if (btn_ev == BUTTON_EVENT_CLICK) {
+    SOL_DEBUG("Button: single press -> flood advert");
+    the_mesh.sendSelfAdvertisement(500, true);   // flood so the app can find us
+    Serial.println("  -> Flood advert sent");
+  } else if (btn_ev == BUTTON_EVENT_DOUBLE_CLICK) {
+    SOL_DEBUG("Button: double press -> toggle solenoid");
+    the_mesh.toggleSolenoid();
+    Serial.print("  -> Solenoid toggled: ");
+    Serial.println(the_mesh.getSolenoidState() ? "OPEN" : "CLOSED");
+  }
+#endif
 }
