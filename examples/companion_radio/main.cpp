@@ -35,8 +35,12 @@ static uint32_t _atoi(const char* sp) {
 #endif
 
 #ifdef ESP32
-  #ifdef WIFI_SSID
+  #if defined(WIFI_SSID) || defined(USE_ETH_W5500)
     #include <helpers/esp32/SerialWifiInterface.h>
+    #ifdef USE_ETH_W5500
+      #include <ETH.h>
+      #include <SPI.h>
+    #endif
     SerialWifiInterface serial_interface;
     #ifndef TCP_PORT
       #define TCP_PORT 5000
@@ -105,8 +109,10 @@ void halt() {
   while (1) ;
 }
 
-/* WIFI RECONNECT TRACKERS */
-#if defined(ESP32) && defined(WIFI_SSID)
+/* WIFI/ETH RECONNECT TRACKERS */
+#if defined(ESP32) && defined(USE_ETH_W5500)
+  static bool eth_connected = false;
+#elif defined(ESP32) && defined(WIFI_SSID)
   bool wifi_needs_reconnect = false;
   unsigned long last_wifi_reconnect_attempt = 0;
 #endif
@@ -199,7 +205,19 @@ void setup() {
     #endif
   );
 
-#ifdef WIFI_SSID
+#ifdef USE_ETH_W5500
+  board.setInhibitSleep(true);   // prevent sleep when Ethernet is active
+  Network.onEvent([](arduino_event_id_t event, arduino_event_info_t info){
+      if (event == ARDUINO_EVENT_ETH_GOT_IP) {
+          eth_connected = true;
+      } else if (event == ARDUINO_EVENT_ETH_DISCONNECTED || event == ARDUINO_EVENT_ETH_LOST_IP) {
+          eth_connected = false;
+      }
+  });
+  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI, ETH_PHY_CS);
+  ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, SPI);
+  serial_interface.begin(TCP_PORT);
+#elif defined(WIFI_SSID)
   board.setInhibitSleep(true);   // prevent sleep when WiFi is active
   WiFi.setAutoReconnect(true);
 
@@ -256,7 +274,7 @@ void loop() {
 #endif
   }
 
-#if defined(ESP32) && defined(WIFI_SSID)
+#if defined(ESP32) && defined(WIFI_SSID) && !defined(USE_ETH_W5500)
   // Safely attempt to reconnect every 10 seconds if flagged
   if (wifi_needs_reconnect && (millis() - last_wifi_reconnect_attempt > 10000)) {
     WIFI_DEBUG_PRINTLN("Attempting manual WiFi reconnect...");

@@ -107,6 +107,17 @@ static const uint8_t A5  = PIN_A5;
 #define PIN_SERIAL1_RX          (7)
 #define PIN_SERIAL1_TX          (6)
 
+// GPS L76K (optional, via NFC pins as UART)
+// NFC1 (P0.09) = GPS TX → MCU RX
+// NFC2 (P0.10) = GPS RX ← MCU TX
+// D0   (P0.02) = GPS STANDBY/EN (HIGH = active)
+#define GPS_BAUDRATE            9600
+#define GPS_THREAD_INTERVAL     50
+#define PIN_GPS_TX              PIN_NFC1
+#define PIN_GPS_RX              PIN_NFC2
+#define PIN_GPS_STANDBY         (0)
+#define PIN_GPS_EN              PIN_GPS_STANDBY
+
 // SPI Interfaces
 #define SPI_INTERFACES_COUNT    (2)
 
@@ -142,7 +153,7 @@ static const uint8_t A5  = PIN_A5;
 #define PIN_PDM_CLK	            (20)
 #define PIN_PDM_DIN	            (21)
 
-// QSPI Pins
+// QSPI Pins (P0.21, P0.25, P0.20, P0.24, P0.22, P0.23 on nRF52840)
 #define PIN_QSPI_SCK            (24)
 #define PIN_QSPI_CS             (25)
 #define PIN_QSPI_IO0            (26)
@@ -151,7 +162,7 @@ static const uint8_t A5  = PIN_A5;
 #define PIN_QSPI_IO3            (29)
 
 // On-board QSPI Flash
-#define EXTERNAL_FLASH_DEVICES  (P25Q16H)
+#define EXTERNAL_FLASH_DEVICES  P25Q16H
 #define EXTERNAL_FLASH_USE_QSPI
 
 #ifdef __cplusplus
