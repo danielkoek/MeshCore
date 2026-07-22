@@ -23,6 +23,10 @@ extern EnvironmentSensorManager sensors;
   extern MomentaryButton user_btn;
 #endif
 
+#if defined(P_LORA_SCLK)
+extern SPIClass radio_spi;
+#endif
+
 bool radio_init();
 mesh::LocalIdentity radio_new_identity();
 
