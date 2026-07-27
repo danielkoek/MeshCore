@@ -35,12 +35,16 @@ static uint32_t _atoi(const char* sp) {
 #endif
 
 #ifdef ESP32
-  #if defined(WIFI_SSID) || defined(USE_ETH_W5500)
-    #include <helpers/esp32/SerialWifiInterface.h>
-    #ifdef USE_ETH_W5500
-      #include <ETH.h>
-      #include <SPI.h>
+  #if defined(USE_ETH_W5500)
+    // pure SPI wired Ethernet (W5500 hardwired TCP/IP stack), WiFi/BLE radios stay off
+    #include <helpers/esp32/SerialEthernetInterface.h>
+    #include <esp_mac.h>
+    SerialEthernetInterface serial_interface;
+    #ifndef TCP_PORT
+      #define TCP_PORT 5000
     #endif
+  #elif defined(WIFI_SSID)
+    #include <helpers/esp32/SerialWifiInterface.h>
     SerialWifiInterface serial_interface;
     #ifndef TCP_PORT
       #define TCP_PORT 5000
@@ -109,10 +113,8 @@ void halt() {
   while (1) ;
 }
 
-/* WIFI/ETH RECONNECT TRACKERS */
-#if defined(ESP32) && defined(USE_ETH_W5500)
-  static bool eth_connected = false;
-#elif defined(ESP32) && defined(WIFI_SSID)
+/* WIFI RECONNECT TRACKERS */
+#if defined(ESP32) && defined(WIFI_SSID) && !defined(USE_ETH_W5500)
   bool wifi_needs_reconnect = false;
   unsigned long last_wifi_reconnect_attempt = 0;
 #endif
@@ -206,16 +208,11 @@ void setup() {
   );
 
 #ifdef USE_ETH_W5500
-  board.setInhibitSleep(true);   // prevent sleep when Ethernet is active
-  Network.onEvent([](arduino_event_id_t event, arduino_event_info_t info){
-      if (event == ARDUINO_EVENT_ETH_GOT_IP) {
-          eth_connected = true;
-      } else if (event == ARDUINO_EVENT_ETH_DISCONNECTED || event == ARDUINO_EVENT_ETH_LOST_IP) {
-          eth_connected = false;
-      }
-  });
-  ETH.begin(ETH_PHY_TYPE, ETH_PHY_ADDR, ETH_PHY_CS, ETH_PHY_IRQ, ETH_PHY_RST, radio_spi);
-  serial_interface.begin(TCP_PORT);
+  board.setInhibitSleep(true);   // prevent light sleep while Ethernet is active
+  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);   // W5500 shares the radio's SPI bus (separate CS)
+  uint8_t eth_mac[6];
+  esp_read_mac(eth_mac, ESP_MAC_ETH);   // factory-assigned MAC reserved for Ethernet
+  serial_interface.begin(TCP_PORT, ETH_PHY_CS, eth_mac);
 #elif defined(WIFI_SSID)
   board.setInhibitSleep(true);   // prevent sleep when WiFi is active
   WiFi.setAutoReconnect(true);
