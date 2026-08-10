@@ -249,6 +249,7 @@ void setup() {
   uint8_t eth_mac[6];
   esp_read_mac(eth_mac, ESP_MAC_ETH);   // factory-assigned MAC reserved for Ethernet
   serial_interface.begin(TCP_PORT, ETH_PHY_CS, eth_mac);
+  interface_manager.addInterface(InterfaceType::Ethernet, &serial_interface);
 #endif
 // add bluetooth interface
 #if defined(BLE_PIN_CODE)
