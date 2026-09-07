@@ -16,13 +16,28 @@ const uint8_t CMD_CW = 0x02;   // Clockwise
 const uint8_t CMD_CCW = 0x03;  // Counter-clockwise
 const uint8_t CMD_STANDBY = 0x04;
 
-// File mode constants (from Adafruit_LittleFS)
-#ifndef FILE_O_READ
-  #define FILE_O_READ  0x00
+// File open helpers (mode constants differ per platform: Adafruit_LittleFS
+// uses FILE_O_READ/FILE_O_WRITE flags, ESP32/RP2040 use mode strings)
+static File openForRead(FILESYSTEM* fs, const char* filename) {
+#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  return fs->open(filename, FILE_O_READ);
+#elif defined(RP2040_PLATFORM)
+  return fs->open(filename, "r");
+#else
+  return fs->open(filename);
 #endif
-#ifndef FILE_O_WRITE
-  #define FILE_O_WRITE 0x02
+}
+
+static File openForWrite(FILESYSTEM* fs, const char* filename) {
+  fs->remove(filename);
+#if defined(NRF52_PLATFORM) || defined(STM32_PLATFORM)
+  return fs->open(filename, FILE_O_WRITE);
+#elif defined(RP2040_PLATFORM)
+  return fs->open(filename, "w");
+#else
+  return fs->open(filename, "w", true);
 #endif
+}
 
 static const char* const DAY_NAMES[] = {
   "Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat", "Daily"
@@ -246,8 +261,7 @@ void WaterSchedulerSolenoid::restoreState(mesh::RTCClock* rtc) {
 // ---------------------------------------------------------------------------
 void WaterSchedulerSolenoid::saveSchedule() {
   if (!_fs) return;
-  _fs->remove(SCHED_FILE);
-  File f = _fs->open(SCHED_FILE, FILE_O_WRITE);
+  File f = openForWrite(_fs, SCHED_FILE);
   if (!f) return;
   uint8_t cnt = (uint8_t)_count;
   f.write(&cnt, 1);
@@ -263,7 +277,7 @@ void WaterSchedulerSolenoid::loadSchedule() {
   if (!_fs) { SOL_DEBUG("loadSchedule: no filesystem"); return; }
   if (!_fs->exists(SCHED_FILE)) { SOL_DEBUG("loadSchedule: file not found"); return; }
 
-  File f = _fs->open(SCHED_FILE, FILE_O_READ);
+  File f = openForRead(_fs, SCHED_FILE);
   if (!f) { SOL_DEBUG("loadSchedule: failed to open file"); return; }
 
   uint8_t cnt = 0;
@@ -278,8 +292,7 @@ void WaterSchedulerSolenoid::loadSchedule() {
 
 void WaterSchedulerSolenoid::saveOverride() {
   if (!_fs) return;
-  _fs->remove(OVERRIDE_FILE);
-  File f = _fs->open(OVERRIDE_FILE, FILE_O_WRITE);
+  File f = openForWrite(_fs, OVERRIDE_FILE);
   if (!f) return;
   uint8_t v = (uint8_t)_override;
   f.write(&v, 1);
@@ -294,7 +307,7 @@ void WaterSchedulerSolenoid::loadOverride() {
   if (!_fs) { SOL_DEBUG("loadOverride: no filesystem"); return; }
   if (!_fs->exists(OVERRIDE_FILE)) { SOL_DEBUG("loadOverride: file not found"); return; }
 
-  File f = _fs->open(OVERRIDE_FILE, FILE_O_READ);
+  File f = openForRead(_fs, OVERRIDE_FILE);
   if (!f) return;
   uint8_t v = 0;
   if (f.read(&v, 1) == 1 && v <= 2) {
