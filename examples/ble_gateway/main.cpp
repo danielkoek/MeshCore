@@ -1,10 +1,10 @@
-#include "BthomeGatewayMesh.h"
+#include "BleGatewayMesh.h"
 
 StdRNG fast_rng;
 SimpleMeshTables tables;
 BleScanner scanner;
 
-BthomeGatewayMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
+BleGatewayMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
 void halt() {
   while (1) ;
@@ -23,12 +23,12 @@ void setup() {
   fast_rng.begin(radio_driver.getRngSeed());
 
   FILESYSTEM* fs;
-#if defined(ESP32)
-  SPIFFS.begin(true);
-  fs = &SPIFFS;
-  IdentityStore store(SPIFFS, "/identity");
+#if defined(NRF52_PLATFORM)
+  InternalFS.begin();
+  fs = &InternalFS;
+  IdentityStore store(InternalFS, "");   // nRF52 uses empty path (no subdirectory)
 #else
-  #error "bthome_gateway only supports ESP32 targets (needs NimBLE)"
+  #error "ble_gateway only supports NRF52 targets (needs Bluefruit BLE scanning)"
 #endif
   if (!store.load("_main", the_mesh.self_id)) {
     MESH_DEBUG_PRINTLN("Generating new keypair");
