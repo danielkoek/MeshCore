@@ -40,7 +40,10 @@ bool BleScanner::Begin() {
   if (_queue == nullptr) return false;
   g_queue = _queue;
 
-  Bluefruit.begin(0, 1);   // no peripheral role needed, just central/observer for scanning
+  // 1 peripheral slot reserved (unused for scanning itself) so a later "start ota"
+  // can bring up DFU advertising — Bluefruit.begin() only configures roles once;
+  // the SoftDevice keeps whatever peripheral count is set on this first call.
+  Bluefruit.begin(1, 1);
   Bluefruit.setTxPower(4);
 
   Bluefruit.Scanner.setRxCallback(onAdvReport);
