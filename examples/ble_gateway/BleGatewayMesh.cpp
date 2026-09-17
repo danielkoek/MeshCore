@@ -61,10 +61,39 @@ void BleGatewayMesh::FlushPending() {
     return;
   }
 
+  if (_bufferCount == 0 && !_heartbeatSent) {
+    // nothing seen this window — send an empty marker so the far end knows
+    // the gateway/channel path is alive even with no adverts to report.
+    if (sendHeartbeat()) {
+      _heartbeatSent = true;
+      _lastSendMillis = now;
+    } else {
+      _packetPoolFailures++;   // retry next call
+    }
+    return;
+  }
+
   // batch fully sent (or was empty) — reset for the next window
   _bufferCount = 0;
+  _heartbeatSent = false;
   _flushing = false;
   _windowStart = now;
+}
+
+bool BleGatewayMesh::sendHeartbeat() {
+  // GRP_DATA payload = [data_type LE][app_len] followed by app payload:
+  // just the format/version byte, no advert records.
+  uint8_t blob[4];
+  blob[0] = (uint8_t)(PLANTPAL_DATA_TYPE & 0xFF);
+  blob[1] = (uint8_t)(PLANTPAL_DATA_TYPE >> 8);
+  blob[2] = 1;     // app_len
+  blob[3] = 0x00;  // format version 0 == heartbeat/empty marker
+
+  auto pkt = createGroupDatagram(PAYLOAD_TYPE_GRP_DATA, _channel, blob, 4);
+  if (pkt == nullptr) return false;
+
+  sendFlood(pkt);
+  return true;
 }
 
 bool BleGatewayMesh::sendAdvert(const ScannedAdvert& advert) {

@@ -38,12 +38,16 @@
 /// batch as encrypted group datagrams on the PlantPal channel and starts a fresh
 /// window. The companion radio at the far end hands the datagrams to the C# bridge.
 ///
+/// If a whole window elapses with zero adverts seen, an empty heartbeat datagram
+/// (format version 0, no further bytes) is sent instead, so the far end can tell
+/// the gateway/channel path is alive even when there's nothing to report.
+///
 /// Wire format of the datagram payload (after the GRP_DATA data_type/len header):
-///   [0]     format version (1)
-///   [1..6]  BLE MAC, display order
-///   [7]     RSSI as seen by this gateway (int8, dBm)
-///   [8]     advert payload length N
-///   [9..]   raw legacy BLE advertising payload (AD structures)
+///   [0]     format version (1 = advert record, 0 = heartbeat/empty marker)
+///   [1..6]  BLE MAC, display order (advert record only)
+///   [7]     RSSI as seen by this gateway (int8, dBm) (advert record only)
+///   [8]     advert payload length N (advert record only)
+///   [9..]   raw legacy BLE advertising payload (AD structures) (advert record only)
 class BleGatewayMesh : public SensorMesh {
 public:
   BleGatewayMesh(mesh::MainBoard& board, mesh::Radio& radio, mesh::MillisecondClock& ms,
@@ -86,6 +90,9 @@ private:
   uint32_t _packetPoolFailures = 0;
   Trigger _lowBatt, _criticalBatt;
 
+  bool _heartbeatSent = false;
+
   bool isDuplicate(const ScannedAdvert& advert) const;
   bool sendAdvert(const ScannedAdvert& advert);
+  bool sendHeartbeat();
 };
