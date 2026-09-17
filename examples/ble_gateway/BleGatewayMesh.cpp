@@ -1,6 +1,7 @@
 #include "BleGatewayMesh.h"
 
 #include <base64.hpp>
+#include <helpers/TxtDataHelpers.h>
 
 bool BleGatewayMesh::BeginChannel() {
   memset(_channel.secret, 0, sizeof(_channel.secret));
@@ -73,11 +74,50 @@ void BleGatewayMesh::FlushPending() {
     return;
   }
 
+  if (!_statusSent) {
+    // human-readable summary, visible in the phone app's channel chat (GRP_TXT).
+    if (sendStatusText(_bufferCount)) {
+      _statusSent = true;
+      _lastSendMillis = now;
+    } else {
+      _packetPoolFailures++;   // retry next call
+    }
+    return;
+  }
+
   // batch fully sent (or was empty) — reset for the next window
   _bufferCount = 0;
   _heartbeatSent = false;
+  _statusSent = false;
   _flushing = false;
   _windowStart = now;
+}
+
+bool BleGatewayMesh::sendStatusText(uint8_t count) {
+  char msg[48];
+  if (count == 0) {
+    strcpy(msg, "no BLE devices found this window");
+  } else {
+    sprintf(msg, "found %d BLE device%s this window", count, count == 1 ? "" : "s");
+  }
+
+  uint32_t timestamp = getRTCClock()->getCurrentTime();
+  uint8_t temp[5 + 32 + sizeof(msg)];
+  memcpy(temp, &timestamp, 4);
+  temp[4] = TXT_TYPE_PLAIN;
+
+  sprintf((char*)&temp[5], "%s: ", ADVERT_NAME);
+  char* ep = strchr((char*)&temp[5], 0);
+  int prefix_len = ep - (char*)&temp[5];
+
+  int msg_len = strlen(msg);
+  memcpy(ep, msg, msg_len);
+
+  auto pkt = createGroupDatagram(PAYLOAD_TYPE_GRP_TXT, _channel, temp, 5 + prefix_len + msg_len);
+  if (pkt == nullptr) return false;
+
+  sendFlood(pkt);
+  return true;
 }
 
 bool BleGatewayMesh::sendHeartbeat() {

@@ -1,0 +1,46 @@
+name: Build Personal Firmwares
+
+on:
+  push:
+    branches:
+      - AddShedule
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        target:
+          - car_companion_radio_ble
+          - water_scheduler
+          - solenoid_water_scheduler
+          - farnivane_repeater
+          - allotment_repeater
+          - ble_gateway
+      fail-fast: false
+    steps:
+
+      - name: Clone Repo
+        uses: actions/checkout@v6
+
+      - name: Setup Build Environment
+        uses: ./.github/actions/setup-build-environment
+
+      - name: Generate platformio.local.ini
+        env:
+          ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+          PLANTPAL_CHANNEL_PSK: ${{ secrets.PLANTPAL_CHANNEL_PSK }}
+        run: |
+          envsubst '${ADMIN_PASSWORD} ${PLANTPAL_CHANNEL_PSK}' \
+            < platformio.local.ini.template \
+            > platformio.local.ini
+
+      - name: Build Firmware
+        run: pio run -e ${{ matrix.target }}
+
+      - name: Upload Firmware
+        uses: actions/upload-artifact@v7
+        with:
+          name: ${{ matrix.target }}
+          path: .pio/build/${{ matrix.target }}/firmware.*
+          if-no-files-found: warn

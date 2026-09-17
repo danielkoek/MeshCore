@@ -1,0 +1,154 @@
+
+[env:car_companion_radio_ble]
+extends = Xiao_S3_WIO
+build_flags =
+  ${Xiao_S3_WIO.build_flags}
+  -I examples/companion_radio/ui-new
+  -D ADVERT_NAME='"Car Meshcore"'
+  -D MAX_CONTACTS=350
+  -D MAX_GROUP_CHANNELS=40
+  -D BLE_PIN_CODE=123456
+  -D DISPLAY_CLASS=SSD1306Display
+  -D OFFLINE_QUEUE_SIZE=256
+  -D MESH_DEBUG=1
+  -D GPS_NMEA_DEBUG
+
+;  -D BLE_DEBUG_LOGGING=1
+;  -D MESH_PACKET_LOGGING=1
+build_src_filter = ${Xiao_S3_WIO.build_src_filter}
+  +<helpers/ui/SSD1306Display.cpp>
+  +<helpers/esp32/*.cpp>
+  +<helpers/ui/MomentaryButton.cpp>
+  +<../examples/companion_radio/*.cpp>
+  +<../examples/companion_radio/ui-new/*.cpp>
+lib_deps =
+  ${Xiao_S3_WIO.lib_deps}
+  densaugeo/base64 @ ~1.4.0
+  adafruit/Adafruit SSD1306 @ ^2.5.13
+
+
+
+
+; ---- Water Scheduler (local / personal settings) ---------------------------
+; Update ADVERT_LAT/LON and ADMIN_PASSWORD before flashing.
+; Uses D1 (GPIO 2) as relay output.
+[env:water_scheduler]
+extends = Xiao_S3_WIO
+build_src_filter = ${Xiao_S3_WIO.build_src_filter}
+  +<../examples/water_scheduler>
+  -<../examples/water_scheduler/main_solenoid.cpp>
+  -<../examples/water_scheduler/WaterSchedulerSolenoid.cpp>
+  +<../examples/simple_sensor/SensorMesh.cpp>
+  +<../examples/simple_sensor/TimeSeriesData.cpp>
+build_flags =
+  ${Xiao_S3_WIO.build_flags}
+  -I examples/simple_sensor
+  -I examples/water_scheduler
+  -D ADVERT_NAME='"Water Scheduler"'
+  -D ADVERT_LAT=51.738911
+  -D ADVERT_LON=-8.731876
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D MAX_NEIGHBOURS=10
+  -D PIN_RELAY=2
+  -D SENSOR_READ_INTERVAL_SECS=60
+lib_deps =
+  ${Xiao_S3_WIO.lib_deps}
+  ${esp32_ota.lib_deps}
+
+; ---- Solenoid Water Scheduler (latching valve + TB6612FNG I2C motor driver) ----
+; Based on XIAO nRF52 with latching solenoid valve controlled via TB6612FNG motor driver.
+; Motor driver connects via I2C (SDA=D7, SCL=D6, default addr 0x14).
+; Reachable via mesh admin CLI (ADMIN_PASSWORD) over LoRA, same as any sensor node.
+; Update ADVERT_LAT/LON and ADMIN_PASSWORD before flashing.
+[env:solenoid_water_scheduler]
+extends = Xiao_nrf52
+board_build.ldscript = boards/nrf52840_s140_v7_extrafs.ld
+board_upload.maximum_size = 708608
+build_src_filter = ${Xiao_nrf52.build_src_filter}
+  +<../examples/water_scheduler/main_solenoid.cpp>
+  +<../examples/water_scheduler/WaterSchedulerSolenoid.cpp>
+  +<../examples/simple_sensor/SensorMesh.cpp>
+  +<../examples/simple_sensor/TimeSeriesData.cpp>
+  +<helpers/ui/MomentaryButton.cpp>
+build_flags =
+  ${Xiao_nrf52.build_flags}
+  -I examples/simple_sensor
+  -I examples/water_scheduler
+  -D ADVERT_NAME='"Solenoid Scheduler"'
+  -D ADVERT_LAT=51.738911
+  -D ADVERT_LON=-8.731876
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D MAX_NEIGHBOURS=10
+  -D MOTOR_I2C_ADDR=0x14
+  ; D6 and D7 since these are TX and RX on the xiao Expansion board
+  ; they are remapped from the I2C default pins (D4 and D5) since we need them for the lore module
+  -D PIN_WIRE_SCL=D7
+  -D PIN_WIRE_SDA=D6
+  -D MOTOR_CHANNEL_A=0
+  -D MOTOR_CHANNEL_B=1
+  -D SENSOR_READ_INTERVAL_SECS=60
+lib_deps =
+  ${Xiao_nrf52.lib_deps}
+
+; ---- Farnivane Repeater (nRF52, solar, temp/humidity) -----------------------
+; Low-power repeater with environment sensor (BME280/SHTC3/etc).
+; Primary purpose: repeat mesh messages. Secondary: report temp/humidity telemetry.
+[env:farnivane_repeater]
+extends = Xiao_nrf52
+build_flags =
+  ${Xiao_nrf52.build_flags}
+  -D ADVERT_NAME='"ssn-bnd-farnivane"'
+  -D ADVERT_LAT=51.779535
+  -D ADVERT_LON=-8.795064
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D MAX_NEIGHBOURS=50
+  -D SENSOR_READ_INTERVAL_SECS=60
+  -D ENABLE_PRIVATE_KEY_EXPORT=1
+;  -D MESH_PACKET_LOGGING=1
+;  -D MESH_DEBUG=1
+build_src_filter = ${Xiao_nrf52.build_src_filter}
+  +<../examples/simple_repeater/*.cpp>
+
+; ---- Allotment Repeater (nRF52, solar, temp/humidity) ------------------------
+; Low-power repeater with environment sensor (BME280/SHTC3/etc).
+; Primary purpose: repeat mesh messages. Secondary: report temp/humidity telemetry.
+[env:allotment_repeater]
+extends = Xiao_nrf52
+build_flags =
+  ${Xiao_nrf52.build_flags}
+  -D ADVERT_NAME='"snn-bnd-allotment"'
+  -D ADVERT_LAT=51.738911
+  -D ADVERT_LON=-8.731876
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D MAX_NEIGHBOURS=50
+  -D SENSOR_READ_INTERVAL_SECS=60
+  -D ENABLE_PRIVATE_KEY_EXPORT=1
+;  -D MESH_PACKET_LOGGING=1
+;  -D MESH_DEBUG=1
+build_src_filter = ${Xiao_nrf52.build_src_filter}
+  +<../examples/simple_repeater/*.cpp>
+
+
+; ---- BLE gateway ---------------------------------------------------
+; Scans any BLE advert (BTHome and otherwise) and forwards them over the mesh as
+; group datagrams on the private "PlantPal" channel (data_type 0xFF01).
+; Also a regular sensor node (temp/humidity telemetry, remote admin, OTA trigger).
+[env:ble_gateway]
+extends = Xiao_nrf52
+build_src_filter = ${Xiao_nrf52.build_src_filter}
+  +<../examples/ble_gateway>
+  +<../examples/simple_sensor/SensorMesh.cpp>
+  +<../examples/simple_sensor/TimeSeriesData.cpp>
+build_flags =
+  ${Xiao_nrf52.build_flags}
+  -I examples/simple_sensor
+  -I examples/ble_gateway
+  -D ADVERT_NAME='"snn-bnd-ble-gateway"'
+  -D ADVERT_LAT=51.738911
+  -D ADVERT_LON=-8.731876
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D PLANTPAL_CHANNEL_PSK='"${PLANTPAL_CHANNEL_PSK}"'
+  -D FORWARD_AFTER_SECS=60
+lib_deps =
+  ${Xiao_nrf52.lib_deps}
+  densaugeo/base64 @ ~1.4.0

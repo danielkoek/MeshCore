@@ -42,6 +42,10 @@
 /// (format version 0, no further bytes) is sent instead, so the far end can tell
 /// the gateway/channel path is alive even when there's nothing to report.
 ///
+/// At the end of every window (batch or heartbeat), a plain GRP_TXT status message
+/// ("<name>: found N BLE device(s) this window" / "no BLE devices found this
+/// window") is also sent, so the summary is readable in the phone app's chat.
+///
 /// Wire format of the datagram payload (after the GRP_DATA data_type/len header):
 ///   [0]     format version (1 = advert record, 0 = heartbeat/empty marker)
 ///   [1..6]  BLE MAC, display order (advert record only)
@@ -91,8 +95,10 @@ private:
   Trigger _lowBatt, _criticalBatt;
 
   bool _heartbeatSent = false;
+  bool _statusSent = false;
 
   bool isDuplicate(const ScannedAdvert& advert) const;
   bool sendAdvert(const ScannedAdvert& advert);
   bool sendHeartbeat();
+  bool sendStatusText(uint8_t count);
 };
