@@ -17,6 +17,7 @@ jobs:
           - farnivane_repeater
           - allotment_repeater
           - ble_gateway
+          - farnivane_eth
       fail-fast: false
     steps:
 

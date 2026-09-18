@@ -152,3 +152,34 @@ build_flags =
 lib_deps =
   ${Xiao_nrf52.lib_deps}
   densaugeo/base64 @ ~1.4.0
+
+; ---- Farnivane Companion Radio (ESP32-S3, Ethernet via W5500) ---------------
+; Companion radio reachable over TCP/Ethernet instead of BLE/WiFi.
+; Same build as Xiao_S3_WIO_companion_radio_eth, just with personal identity/admin baked in.
+[env:farnivane_eth]
+extends = Xiao_S3_WIO
+build_src_filter = ${Xiao_S3_WIO.build_src_filter}
+  +<helpers/ui/NullDisplayDriver.cpp>
+  +<helpers/esp32/SerialEthernetInterface.cpp>
+  +<helpers/ui/MomentaryButton.cpp>
+  +<../examples/companion_radio/*.cpp>
+build_flags =
+  ${Xiao_S3_WIO.build_flags}
+  -I examples/companion_radio/ui-new
+  -D MAX_CONTACTS=350
+  -D MAX_GROUP_CHANNELS=40
+  -D OFFLINE_QUEUE_SIZE=256
+  -D USE_ETH_W5500=1
+  -D ETH_PHY_CS=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
+  -D ETH_SPI_SCK=7   ; D8, shared with LoRa radio
+  -D ETH_SPI_MISO=8  ; D9, shared with LoRa radio
+  -D ETH_SPI_MOSI=9  ; D10, shared with LoRa radio
+  -D TCP_PORT=5000
+  -D ADVERT_NAME='"ssn-bnd-farnivane-eth"'
+  -D ADVERT_LAT=51.779535
+  -D ADVERT_LON=-8.795064
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+lib_deps =
+  ${Xiao_S3_WIO.lib_deps}
+  densaugeo/base64 @ ~1.4.0
+  arduino-libraries/Ethernet @ ^2.0.2
