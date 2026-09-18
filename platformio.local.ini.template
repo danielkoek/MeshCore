@@ -181,5 +181,6 @@ build_flags =
   -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
 lib_deps =
   ${Xiao_S3_WIO.lib_deps}
+  ${esp32_ota.lib_deps}
   densaugeo/base64 @ ~1.4.0
   arduino-libraries/Ethernet @ ^2.0.2
