@@ -104,9 +104,8 @@ SimpleMeshTables tables;
 
 MyMesh the_mesh(board, radio_driver, *new ArduinoMillis(), fast_rng, rtc_clock, tables);
 
-#ifdef PIN_USER_BTN
-MomentaryButton user_btn(PIN_USER_BTN, 1000, true, true);  // 1s long-press, active-LOW, pullup
-#endif
+// user_btn is already declared/defined by the board's target.cpp (same PIN_USER_BTN,
+// same 1s long-press/active-LOW/pullup config) — see target.h.
 
 static char command[160];
 
