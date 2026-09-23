@@ -21,9 +21,17 @@
 //
 // The same commands also work on the serial terminal (115200 baud).
 // INA3221 telemetry is reported automatically via the sensor framework.
+//
+// On/off/auto can also be driven remotely without an admin CLI session: the
+// node listens on the "PlantPal" group channel for a small binary command
+// addressed to its own id, applies it, and broadcasts an ack back on the same
+// channel. See PlantPalCommandChannel.h for the wire format. (Nothing sends
+// these commands yet — receive/ack side only, ready for whenever that's
+// wired up.)
 
 #include "SensorMesh.h"    // from examples/simple_sensor/
 #include "WaterScheduler.h"
+#include "PlantPalCommandChannel.h"
 
 // ---------------------------------------------------------------------------
 // MyMesh – extends SensorMesh with water-scheduler behaviour
@@ -46,10 +54,19 @@ public:
 
   bool getRelayState() const { return _scheduler.getRelayState(); }
 
+  /// Derives the PlantPal group channel so this node can receive/ack pump
+  /// commands over it. Call once after self_id is loaded.
+  bool beginPlantPalChannel() {
+    _plantpalChannelReady = derivePlantPalChannel(_plantpalChannel);
+    return _plantpalChannelReady;
+  }
+
 protected:
   /* ======================= custom sensor / relay logic =================== */
 
   WaterScheduler _scheduler;
+  mesh::GroupChannel _plantpalChannel;
+  bool _plantpalChannelReady = false;
 
   // Called by SensorMesh on each periodic sensor read cycle.
   // The INA3221 channels are reported automatically by EnvironmentSensorManager.
@@ -68,6 +85,45 @@ protected:
   bool handleCustomCommand(uint32_t sender_timestamp,
                            char* command, char* reply) override {
     return _scheduler.handleCommand(sender_timestamp, command, reply);
+  }
+
+  /* ================= PlantPal channel: pump command receive ============== */
+
+  int searchChannelsByHash(const uint8_t* hash, mesh::GroupChannel channels[], int max_matches) override {
+    if (_plantpalChannelReady && max_matches > 0 && *hash == _plantpalChannel.hash[0]) {
+      channels[0] = _plantpalChannel;
+      return 1;
+    }
+    return 0;
+  }
+
+  void onGroupDataRecv(mesh::Packet* packet, uint8_t type, const mesh::GroupChannel& channel,
+                       uint8_t* data, size_t len) override {
+    if (type != PAYLOAD_TYPE_GRP_DATA) return;
+
+    uint8_t self_id_6[6];
+    getPlantPalSelfId(self_id, self_id_6);
+
+    PlantPalPumpAction action;
+    uint32_t seq;
+    if (!decodePlantPalPumpCommand(data, len, self_id_6, action, seq)) return;  // not for us
+
+    char cmd[20];
+    switch (action) {
+      case PLANTPAL_PUMP_ON:   strcpy(cmd, "relay on");   break;
+      case PLANTPAL_PUMP_OFF:  strcpy(cmd, "relay off");  break;
+      case PLANTPAL_PUMP_AUTO: strcpy(cmd, "relay auto"); break;
+      default: return;
+    }
+
+    char reply[160];
+    reply[0] = 0;
+    bool ok = _scheduler.handleCommand(0, cmd, reply);
+
+    uint8_t ackBlob[3 + PLANTPAL_PUMP_APP_LEN];
+    size_t ackLen = encodePlantPalPumpAck(ackBlob, self_id_6, ok ? 0 : 1, seq);
+    auto pkt = createGroupDatagram(PAYLOAD_TYPE_GRP_DATA, _plantpalChannel, ackBlob, ackLen);
+    if (pkt) sendFlood(pkt);
   }
 
   /* ======================================================================= */
@@ -130,6 +186,10 @@ void setup() {
 
   // Initialise the scheduler (loads schedule + override from SPIFFS)
   the_mesh.beginScheduler(fs);
+
+  if (!the_mesh.beginPlantPalChannel()) {
+    Serial.println("PlantPal channel PSK invalid; pump commands over the channel disabled");
+  }
 
   the_mesh.begin(fs);
 
