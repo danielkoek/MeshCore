@@ -97,6 +97,7 @@ private:
   bool _heartbeatSent = false;
   bool _statusSent = false;
 
+  static bool hasServiceData(const ScannedAdvert& advert);
   bool isDuplicate(const ScannedAdvert& advert) const;
   bool sendAdvert(const ScannedAdvert& advert);
   bool sendHeartbeat();

@@ -28,7 +28,25 @@ bool BleGatewayMesh::isDuplicate(const ScannedAdvert& advert) const {
   return false;
 }
 
+bool BleGatewayMesh::hasServiceData(const ScannedAdvert& advert) {
+  // Service Data AD structures (16/32/128-bit UUID) are what actually carries a
+  // sensor's payload (BTHome, SwitchBot, etc). Adverts without one are just a bare
+  // name/flags/manufacturer blob — most commonly a phone advertising with a random,
+  // rotating MAC — and aren't worth mesh airtime or a device row on the far end.
+  uint8_t pos = 0;
+  while (pos < advert.dataLen) {
+    uint8_t len = advert.data[pos];
+    if (len == 0) break;
+    if (pos + 1 + len > advert.dataLen) break;
+    uint8_t type = advert.data[pos + 1];
+    if (type == 0x16 || type == 0x20 || type == 0x21) return true;
+    pos += 1 + len;
+  }
+  return false;
+}
+
 void BleGatewayMesh::ProcessAdvert(const ScannedAdvert& advert) {
+  if (!hasServiceData(advert)) return;   // nothing worth relaying
   if (isDuplicate(advert)) return;   // exact repeat already queued this window
 
   if (_bufferCount >= MAX_BUFFERED_ADVERTS) {
