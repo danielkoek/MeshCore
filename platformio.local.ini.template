@@ -54,6 +54,7 @@ build_flags =
 lib_deps =
   ${Xiao_S3_WIO.lib_deps}
   ${esp32_ota.lib_deps}
+  densaugeo/base64 @ ~1.4.0
 
 ; ---- Solenoid Water Scheduler (latching valve + TB6612FNG I2C motor driver) ----
 ; Based on XIAO nRF52 with latching solenoid valve controlled via TB6612FNG motor driver.
@@ -89,6 +90,7 @@ build_flags =
   -D SENSOR_READ_INTERVAL_SECS=60
 lib_deps =
   ${Xiao_nrf52.lib_deps}
+  densaugeo/base64 @ ~1.4.0
 
 ; ---- Farnivane Repeater (nRF52, solar, temp/humidity) -----------------------
 ; Low-power repeater with environment sensor (BME280/SHTC3/etc).
@@ -160,7 +162,8 @@ lib_deps =
 extends = Xiao_S3_WIO
 build_src_filter = ${Xiao_S3_WIO.build_src_filter}
   +<helpers/ui/NullDisplayDriver.cpp>
-  +<helpers/esp32/SerialEthernetInterface.cpp>
+  +<helpers/ethernet/*.cpp>
+  +<helpers/ethernet/W5500/>
   +<helpers/ui/MomentaryButton.cpp>
   +<../examples/companion_radio/*.cpp>
 build_flags =
@@ -169,12 +172,14 @@ build_flags =
   -D MAX_CONTACTS=350
   -D MAX_GROUP_CHANNELS=40
   -D OFFLINE_QUEUE_SIZE=256
-  -D USE_ETH_W5500=1
-  -D ETH_PHY_CS=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
-  -D ETH_SPI_SCK=7   ; D8, shared with LoRa radio
-  -D ETH_SPI_MISO=8  ; D9, shared with LoRa radio
-  -D ETH_SPI_MOSI=9  ; D10, shared with LoRa radio
-  -D TCP_PORT=5000
+  -D ETHERNET_ENABLED=1
+  -D ETHERNET_USE_W5500
+  -D ETHERNET_CLASS=W5500EthernetInterface
+  -D ETHERNET_CS_PIN=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
+  -D ETHERNET_SPI_SCK=7   ; D8, shared with LoRa radio
+  -D ETHERNET_SPI_MISO=8  ; D9, shared with LoRa radio
+  -D ETHERNET_SPI_MOSI=9  ; D10, shared with LoRa radio
+  -D ETHERNET_TCP_PORT=5000
   -D ADVERT_NAME='"ssn-bnd-farnivane-eth"'
   -D ADVERT_LAT=51.779535
   -D ADVERT_LON=-8.795064
