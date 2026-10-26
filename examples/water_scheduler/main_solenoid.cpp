@@ -279,7 +279,7 @@ void loop() {
     command[len - 1] = 0;   // strip CR
     char reply[160];
     reply[0] = 0;
-    the_mesh.handleCommand(0, command, reply);
+    the_mesh.handleCommand(NULL, 0, command, reply);
     if (reply[0]) {
       Serial.print("  -> ");
       Serial.println(reply);
