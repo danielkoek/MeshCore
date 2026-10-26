@@ -4,7 +4,7 @@
 XiaoS3WIOBoard board;
 
 #if defined(P_LORA_SCLK)
-  #if defined(USE_ETH_W5500)
+  #if defined(ETHERNET_USE_W5500)
     // the W5500 Ethernet module shares SCK/MISO/MOSI with the radio, and the
     // Arduino Ethernet library drives it via the global SPI object (FSPI).
     // Put the radio on the same bus so two SPI hosts don't fight over the pins.

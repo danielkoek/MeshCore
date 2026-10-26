@@ -106,17 +106,6 @@ MultiSerialInterface interface_manager;
   DataStore store(SPIFFS, rtc_clock);
 #endif
 
-// include W5500 ethernet interface
-#if defined(ESP32) && defined(USE_ETH_W5500)
-  // pure SPI wired Ethernet (W5500 hardwired TCP/IP stack), WiFi/BLE radios stay off
-  #include <helpers/esp32/SerialEthernetInterface.h>
-  #include <esp_mac.h>
-  SerialEthernetInterface w5500_interface;
-  #ifndef TCP_PORT
-    #define TCP_PORT 5000
-  #endif
-#endif
-
 /* GLOBAL OBJECTS */
 #ifdef DISPLAY_CLASS
   #include "UITask.h"
@@ -196,14 +185,6 @@ void setup() {
   #error "need to define filesystem"
 #endif
 
-#ifdef USE_ETH_W5500
-  board.setInhibitSleep(true);   // prevent light sleep while Ethernet is active
-  SPI.begin(ETH_SPI_SCK, ETH_SPI_MISO, ETH_SPI_MOSI);   // W5500 shares the radio's SPI bus (separate CS)
-  uint8_t eth_mac[6];
-  esp_read_mac(eth_mac, ESP_MAC_ETH);   // factory-assigned MAC reserved for Ethernet
-  w5500_interface.begin(TCP_PORT, ETH_PHY_CS, eth_mac);
-  interface_manager.addInterface(InterfaceType::Ethernet, &w5500_interface);
-#endif
 #ifdef BLE_PIN_CODE // 123456 by default
   if (the_mesh.getNodePrefs()->ble_pin == 0) {
 #ifdef DISPLAY_CLASS
@@ -281,6 +262,9 @@ void setup() {
 
 // add ethernet interface
 #if defined(ETHERNET_ENABLED)
+#if defined(ESP32)
+  board.setInhibitSleep(true);   // prevent light sleep while Ethernet is active
+#endif
   ethernet_interface.begin();
   interface_manager.addInterface(InterfaceType::Ethernet, &ethernet_interface);
 #endif
