@@ -10,7 +10,11 @@
 
 #ifdef ETHERNET_ENABLED
   #define ETHERNET_CLI_BANNER "MeshCore Repeater CLI"
-  #include <helpers/nrf52/EthernetCLI.h>
+  #if defined(ETHERNET_USE_W5500)
+    #include <helpers/ethernet/W5500/W5500EthernetCLI.h>
+  #else
+    #include <helpers/nrf52/EthernetCLI.h>
+  #endif
 #endif
 
 StdRNG fast_rng;
@@ -111,6 +115,9 @@ void setup() {
 #endif
 
 #ifdef ETHERNET_ENABLED
+#if defined(ESP32)
+  board.setInhibitSleep(true);   // prevent light sleep while Ethernet is active
+#endif
   ethernet_start_task();
 #endif
 

@@ -1,34 +1,3 @@
-
-[env:car_companion_radio_ble]
-extends = Xiao_S3_WIO
-build_flags =
-  ${Xiao_S3_WIO.build_flags}
-  -I examples/companion_radio/ui-new
-  -D ADVERT_NAME='"Car Meshcore"'
-  -D MAX_CONTACTS=350
-  -D MAX_GROUP_CHANNELS=40
-  -D BLE_PIN_CODE=123456
-  -D DISPLAY_CLASS=SSD1306Display
-  -D OFFLINE_QUEUE_SIZE=256
-  -D MESH_DEBUG=1
-  -D GPS_NMEA_DEBUG
-
-;  -D BLE_DEBUG_LOGGING=1
-;  -D MESH_PACKET_LOGGING=1
-build_src_filter = ${Xiao_S3_WIO.build_src_filter}
-  +<helpers/ui/SSD1306Display.cpp>
-  +<helpers/esp32/*.cpp>
-  +<helpers/ui/MomentaryButton.cpp>
-  +<../examples/companion_radio/*.cpp>
-  +<../examples/companion_radio/ui-new/*.cpp>
-lib_deps =
-  ${Xiao_S3_WIO.lib_deps}
-  densaugeo/base64 @ ~1.4.0
-  adafruit/Adafruit SSD1306 @ ^2.5.13
-
-
-
-
 ; ---- Water Scheduler (local / personal settings) ---------------------------
 ; Update ADVERT_LAT/LON and ADMIN_PASSWORD before flashing.
 ; Uses D1 (GPIO 2) as relay output.
@@ -92,25 +61,6 @@ lib_deps =
   ${Xiao_nrf52.lib_deps}
   densaugeo/base64 @ ~1.4.0
 
-; ---- Farnivane Repeater (nRF52, solar, temp/humidity) -----------------------
-; Low-power repeater with environment sensor (BME280/SHTC3/etc).
-; Primary purpose: repeat mesh messages. Secondary: report temp/humidity telemetry.
-[env:farnivane_repeater]
-extends = Xiao_nrf52
-build_flags =
-  ${Xiao_nrf52.build_flags}
-  -D ADVERT_NAME='"ssn-bnd-farnivane"'
-  -D ADVERT_LAT=51.779535
-  -D ADVERT_LON=-8.795064
-  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
-  -D MAX_NEIGHBOURS=50
-  -D SENSOR_READ_INTERVAL_SECS=60
-  -D ENABLE_PRIVATE_KEY_EXPORT=1
-;  -D MESH_PACKET_LOGGING=1
-;  -D MESH_DEBUG=1
-build_src_filter = ${Xiao_nrf52.build_src_filter}
-  +<../examples/simple_repeater/*.cpp>
-
 ; ---- Allotment Repeater (nRF52, solar, temp/humidity) ------------------------
 ; Low-power repeater with environment sensor (BME280/SHTC3/etc).
 ; Primary purpose: repeat mesh messages. Secondary: report temp/humidity telemetry.
@@ -155,37 +105,33 @@ lib_deps =
   ${Xiao_nrf52.lib_deps}
   densaugeo/base64 @ ~1.4.0
 
-; ---- Farnivane Companion Radio (ESP32-S3, Ethernet via W5500) ---------------
-; Companion radio reachable over TCP/Ethernet instead of BLE/WiFi.
-; Same build as Xiao_S3_WIO_companion_radio_eth, just with personal identity/admin baked in.
-[env:farnivane_eth]
+; ---- Farnivane Repeater (ESP32-S3, Ethernet via W5500) ----------------------
+; Replaces the old nRF52 farnivane_repeater. Primary purpose: repeat mesh messages.
+; Also reports temp/humidity telemetry. Admin CLI is reachable over TCP
+; (telnet/nc <ip> 5000) via the W5500 adapter, as well as over USB serial / LoRa.
+[env:farnivane_repeater_eth]
 extends = Xiao_S3_WIO
 build_src_filter = ${Xiao_S3_WIO.build_src_filter}
-  +<helpers/ui/NullDisplayDriver.cpp>
-  +<helpers/ethernet/*.cpp>
-  +<helpers/ethernet/W5500/>
-  +<helpers/ui/MomentaryButton.cpp>
-  +<../examples/companion_radio/*.cpp>
+  +<../examples/simple_repeater/*.cpp>
 build_flags =
   ${Xiao_S3_WIO.build_flags}
-  -I examples/companion_radio/ui-new
-  -D MAX_CONTACTS=350
-  -D MAX_GROUP_CHANNELS=40
-  -D OFFLINE_QUEUE_SIZE=256
+  -D ADVERT_NAME='"ssn-bnd-farnivane-eth"'
+  -D ADVERT_LAT=51.778956
+  -D ADVERT_LON=-8.796803
+  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+  -D MAX_NEIGHBOURS=50
+  -D SENSOR_READ_INTERVAL_SECS=60
+  -D ENABLE_PRIVATE_KEY_EXPORT=1
   -D ETHERNET_ENABLED=1
   -D ETHERNET_USE_W5500
-  -D ETHERNET_CLASS=W5500EthernetInterface
   -D ETHERNET_CS_PIN=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
   -D ETHERNET_SPI_SCK=7   ; D8, shared with LoRa radio
   -D ETHERNET_SPI_MISO=8  ; D9, shared with LoRa radio
   -D ETHERNET_SPI_MOSI=9  ; D10, shared with LoRa radio
   -D ETHERNET_TCP_PORT=5000
-  -D ADVERT_NAME='"ssn-bnd-farnivane-eth"'
-  -D ADVERT_LAT=51.779535
-  -D ADVERT_LON=-8.795064
-  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
+;  -D MESH_PACKET_LOGGING=1
+;  -D MESH_DEBUG=1
 lib_deps =
   ${Xiao_S3_WIO.lib_deps}
   ${esp32_ota.lib_deps}
-  densaugeo/base64 @ ~1.4.0
   arduino-libraries/Ethernet @ ^2.0.2
