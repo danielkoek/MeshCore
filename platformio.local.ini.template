@@ -111,6 +111,9 @@ lib_deps =
 ; (telnet/nc <ip> 5000) via the W5500 adapter, as well as over USB serial / LoRa.
 [env:farnivane_repeater_eth]
 extends = Xiao_S3_WIO
+; arduino-esp32 core 3.x (same pioarduino release as esp32c6_base): needed for the
+; native ETH.h W5500 driver (real lwIP stack, DHCP/link handled by the driver)
+platform = https://github.com/pioarduino/platform-espressif32/releases/download/53.03.13-1/platform-espressif32.zip
 build_src_filter = ${Xiao_S3_WIO.build_src_filter}
   +<../examples/simple_repeater/*.cpp>
 build_flags =
@@ -123,8 +126,9 @@ build_flags =
   -D SENSOR_READ_INTERVAL_SECS=60
   -D ENABLE_PRIVATE_KEY_EXPORT=1
   -D ETHERNET_ENABLED=1
-  -D ETHERNET_USE_W5500
+  -D ETHERNET_USE_W5500_NATIVE
   -D ETHERNET_CS_PIN=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
+  -D ETHERNET_INT_PIN=-1  ; INT not wired on the adapter -> driver polls
   -D ETHERNET_SPI_SCK=7   ; D8, shared with LoRa radio
   -D ETHERNET_SPI_MISO=8  ; D9, shared with LoRa radio
   -D ETHERNET_SPI_MOSI=9  ; D10, shared with LoRa radio
@@ -134,4 +138,3 @@ build_flags =
 lib_deps =
   ${Xiao_S3_WIO.lib_deps}
   ${esp32_ota.lib_deps}
-  arduino-libraries/Ethernet @ ^2.0.2

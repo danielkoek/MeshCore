@@ -262,9 +262,6 @@ void setup() {
 
 // add ethernet interface
 #if defined(ETHERNET_ENABLED)
-#if defined(ESP32)
-  board.setInhibitSleep(true);   // prevent light sleep while Ethernet is active
-#endif
   ethernet_interface.begin();
   interface_manager.addInterface(InterfaceType::Ethernet, &ethernet_interface);
 #endif
