@@ -14,13 +14,11 @@ jobs:
           - car_companion_radio_ble
           - water_scheduler
           - solenoid_water_scheduler
-          - farnivane_repeater
           - allotment_repeater
           - ble_gateway
-          - farnivane_eth
+          - farnivane_repeater_eth
       fail-fast: false
     steps:
-
       - name: Clone Repo
         uses: actions/checkout@v6
 
