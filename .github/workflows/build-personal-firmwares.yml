@@ -41,9 +41,13 @@ jobs:
       - name: Build Firmware
         run: pio run -e ${{ matrix.target }}
 
+      # Rename so each upload has a unique file name (archive: false uses the file name)
+      - name: Stage Firmware
+        run: cp .pio/build/${{ matrix.target }}/firmware.${{ matrix.ext }} ${{ matrix.target }}.${{ matrix.ext }}
+
       - name: Upload Firmware
         uses: actions/upload-artifact@v7
         with:
-          name: ${{ matrix.target }}
-          path: .pio/build/${{ matrix.target }}/firmware.${{ matrix.ext }}
-          if-no-files-found: warn
+          path: ${{ matrix.target }}.${{ matrix.ext }}
+          archive: false
+          if-no-files-found: error
