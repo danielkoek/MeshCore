@@ -932,7 +932,11 @@ MyMesh::MyMesh(mesh::Radio &radio, mesh::RNG &rng, mesh::RTCClock &rtc, SimpleMe
   _prefs.radio_fem_txgain = 0;
 #endif
   //_prefs.rx_delay_base = 10.0f;  enable once new algo fixed
+#ifdef DEFAULT_REPEAT_ENABLED
+  _prefs.setRepeatEn(true);     // forward other nodes' packets (needs freq in ALLOWED_REPEAT_FREQ_RANGE)
+#else
   _prefs.setRepeatEn(false);
+#endif
 #if defined(USE_SX1262) || defined(USE_SX1268)
 #ifdef SX126X_RX_BOOSTED_GAIN
   _prefs.rx_boosted_gain = SX126X_RX_BOOSTED_GAIN;
@@ -2096,6 +2100,13 @@ bool MyMesh::handleCommand(const char* command, uint32_t sender_timestamp, char*
   // hook for variant-specific CLI processing
   if (board.handleCommand(command, sender_timestamp, reply)) {
     if (_prefs.isDirty()) { savePrefs(); }
+    return true;
+  }
+
+  if (memcmp(command, "start ota", 9) == 0) {
+    if (!board.startOTAUpdate(_prefs.node_name, reply)) {
+      strcpy(reply, "Error: OTA not supported");
+    }
     return true;
   }
 

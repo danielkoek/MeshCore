@@ -106,27 +106,39 @@ lib_deps =
   densaugeo/base64 @ ~1.4.0
 
 ; ---- Farnivane Repeater (ESP32-S3, Ethernet via W5500) ----------------------
-; Replaces the old nRF52 farnivane_repeater. Primary purpose: repeat mesh messages.
-; Also reports temp/humidity telemetry. Admin CLI is reachable over TCP
-; (telnet/nc <ip> 5000) via the W5500 adapter, as well as over USB serial / LoRa.
+; Companion-protocol firmware (so the Home Assistant MeshCore integration / meshcore_py
+; can connect over TCP <ip>:5000) with client repeat enabled by default, so it also
+; forwards mesh traffic. Telemetry is served to mesh/companion requests.
+; CLI (over the companion protocol, or USB): "start ota" starts the WiFi OTA
+; web updater (AP "MeshCore-OTA", also reachable on the ethernet IP at /update).
+; Repeat is a saved pref: DEFAULT_REPEAT_ENABLED only applies to a fresh install.
 [env:farnivane_repeater_eth]
 extends = Xiao_S3_WIO
 ; arduino-esp32 core 3.x (same pioarduino release as esp32c6_base): needed for the
 ; native ETH.h W5500 driver (real lwIP stack, DHCP/link handled by the driver)
 platform = https://github.com/pioarduino/platform-espressif32/releases/download/53.03.13-1/platform-espressif32.zip
 build_src_filter = ${Xiao_S3_WIO.build_src_filter}
-  +<../examples/simple_repeater/*.cpp>
+  +<helpers/ui/NullDisplayDriver.cpp>
+  +<helpers/ui/MomentaryButton.cpp>
+  +<helpers/ethernet/*.cpp>
+  +<helpers/ethernet/W5500/*.cpp>
+  +<../examples/companion_radio/*.cpp>
 build_flags =
   ${Xiao_S3_WIO.build_flags}
+  -I examples/companion_radio/ui-new
   -D ADVERT_NAME='"ssn-bnd-farnivane-eth"'
   -D ADVERT_LAT=51.778956
   -D ADVERT_LON=-8.796803
-  -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
-  -D MAX_NEIGHBOURS=50
-  -D SENSOR_READ_INTERVAL_SECS=60
-  -D ENABLE_PRIVATE_KEY_EXPORT=1
+  -D MAX_CONTACTS=350
+  -D MAX_GROUP_CHANNELS=40
+  -D OFFLINE_QUEUE_SIZE=256
+  -D ENABLE_USB_INTERFACE
+  -D ENABLE_WEB_OTA
+  -D DEFAULT_REPEAT_ENABLED
+  -D ALLOWED_REPEAT_FREQ_RANGE='{869400,869700}'
   -D ETHERNET_ENABLED=1
   -D ETHERNET_USE_W5500_NATIVE
+  -D ETHERNET_CLASS=W5500NativeEthernetInterface
   -D ETHERNET_CS_PIN=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
   -D ETHERNET_INT_PIN=-1  ; INT not wired on the adapter -> driver polls
   -D ETHERNET_SPI_SCK=7   ; D8, shared with LoRa radio
@@ -138,3 +150,4 @@ build_flags =
 lib_deps =
   ${Xiao_S3_WIO.lib_deps}
   ${esp32_ota.lib_deps}
+  densaugeo/base64 @ ~1.4.0
