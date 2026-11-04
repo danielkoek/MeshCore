@@ -10,12 +10,17 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       matrix:
-        target:
-          - water_scheduler
-          - solenoid_water_scheduler
-          - allotment_repeater
-          - ble_gateway
-          - farnivane_repeater_eth
+        include:
+          - target: water_scheduler
+            ext: bin
+          - target: solenoid_water_scheduler
+            ext: zip
+          - target: allotment_repeater
+            ext: zip
+          - target: ble_gateway
+            ext: zip
+          - target: farnivane_repeater_eth
+            ext: bin
       fail-fast: false
     steps:
       - name: Clone Repo
@@ -40,5 +45,5 @@ jobs:
         uses: actions/upload-artifact@v7
         with:
           name: ${{ matrix.target }}
-          path: .pio/build/${{ matrix.target }}/firmware.*
+          path: .pio/build/${{ matrix.target }}/firmware.${{ matrix.ext }}
           if-no-files-found: warn
