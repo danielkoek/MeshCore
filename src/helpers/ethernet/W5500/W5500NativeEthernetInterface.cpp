@@ -2,6 +2,13 @@
 
 #if defined(ETHERNET_ENABLED) && defined(ETHERNET_USE_W5500_NATIVE)
 
+#if defined(ETHERNET_SHARE_RADIO_SPI)
+  #include <target.h>          // declares: extern SPIClass radio_spi;
+  #define ETH_SPI_BUS radio_spi
+#else
+  #define ETH_SPI_BUS SPI
+#endif
+
 static volatile bool eth_has_ip = false;
 
 static void onEthEvent(arduino_event_id_t event, arduino_event_info_t info) {
@@ -28,12 +35,16 @@ static void onEthEvent(arduino_event_id_t event, arduino_event_info_t info) {
 }
 
 bool W5500NativeEthernetInterface::begin() {
-#if defined(ETHERNET_SPI_SCK) && defined(ETHERNET_SPI_MISO) && defined(ETHERNET_SPI_MOSI)
-  SPI.begin(ETHERNET_SPI_SCK, ETHERNET_SPI_MISO, ETHERNET_SPI_MOSI);   // shared with the radio (separate CS)
+#if defined(ETHERNET_SHARE_RADIO_SPI)
+  // The radio already started this bus. Hand ETH the radio's own SPIClass: a second
+  // SPIClass on the same host re-attaches the pins and stops the bus under the radio,
+  // after which the W5500 driver stalls.
+#elif defined(ETHERNET_SPI_SCK) && defined(ETHERNET_SPI_MISO) && defined(ETHERNET_SPI_MOSI)
+  SPI.begin(ETHERNET_SPI_SCK, ETHERNET_SPI_MISO, ETHERNET_SPI_MOSI);
 #endif
   Network.onEvent(onEthEvent);
   _hw_ok = ETH.begin(ETH_PHY_W5500, 1, ETHERNET_CS_PIN, ETHERNET_INT_PIN,
-                     ETHERNET_RST_PIN, SPI, ETHERNET_SPI_FREQ_MHZ);
+                     ETHERNET_RST_PIN, ETH_SPI_BUS, ETHERNET_SPI_FREQ_MHZ);
   if (!_hw_ok) {
     ETHERNET_DEBUG_PRINTLN("begin() failed (W5500 not found?)");
     return false;

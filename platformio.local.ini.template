@@ -138,6 +138,7 @@ build_flags =
   -D ALLOWED_REPEAT_FREQ_RANGE='{869400,869700}'
   -D ETHERNET_ENABLED=1
   -D ETHERNET_USE_W5500_NATIVE
+  -D ETHERNET_SHARE_RADIO_SPI   ; reuse the radio's SPIClass (same bus), do not SPI.begin() a second one
   -D ETHERNET_CLASS=W5500NativeEthernetInterface
   -D ETHERNET_CS_PIN=2    ; W5500 CS = D1 (GPIO2) on Seeed XIAO W5500 Ethernet Adapter
   -D ETHERNET_INT_PIN=-1  ; INT not wired on the adapter -> driver polls

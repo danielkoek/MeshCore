@@ -262,6 +262,7 @@ void setup() {
 
 // add ethernet interface
 #if defined(ETHERNET_ENABLED)
+  board.setInhibitSleep(true);   // light sleep stalls the polled SPI ethernet driver
   ethernet_interface.begin();
   interface_manager.addInterface(InterfaceType::Ethernet, &ethernet_interface);
 #endif
