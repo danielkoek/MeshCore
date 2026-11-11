@@ -11,6 +11,11 @@
 #define ADV_TYPE_SENSOR       4
 //FUTURE: 5..15
 
+// type this node advertises itself as (companion firmware); override e.g. -D SELF_ADVERT_TYPE=ADV_TYPE_REPEATER
+#ifndef SELF_ADVERT_TYPE
+  #define SELF_ADVERT_TYPE    ADV_TYPE_CHAT
+#endif
+
 #define ADV_LATLON_MASK       0x10
 #define ADV_FEAT1_MASK        0x20   // FUTURE
 #define ADV_FEAT2_MASK        0x40   // FUTURE

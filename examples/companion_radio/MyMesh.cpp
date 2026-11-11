@@ -1089,7 +1089,7 @@ void MyMesh::handleCmdFrame(size_t len) {
     _iter_started = false; // stop any left-over ContactsIterator
     int i = 0;
     out_frame[i++] = RESP_CODE_SELF_INFO;
-    out_frame[i++] = ADV_TYPE_CHAT; // what this node Advert identifies as (maybe node's pronouns too?? :-)
+    out_frame[i++] = SELF_ADVERT_TYPE; // what this node Advert identifies as (maybe node's pronouns too?? :-)
     out_frame[i++] = _prefs.tx_power_dbm;
     out_frame[i++] = MAX_LORA_TX_POWER;
     memcpy(&out_frame[i], self_id.pub_key, PUB_KEY_SIZE);
