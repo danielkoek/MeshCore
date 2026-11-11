@@ -74,7 +74,6 @@ build_flags =
   -D ADMIN_PASSWORD='"${ADMIN_PASSWORD}"'
   -D MAX_NEIGHBOURS=50
   -D SENSOR_READ_INTERVAL_SECS=60
-  -D ENABLE_PRIVATE_KEY_EXPORT=1
 ;  -D MESH_PACKET_LOGGING=1
 ;  -D MESH_DEBUG=1
 build_src_filter = ${Xiao_nrf52.build_src_filter}
@@ -134,7 +133,7 @@ build_flags =
   -D OFFLINE_QUEUE_SIZE=256
   -D ENABLE_USB_INTERFACE
   -D ENABLE_WEB_OTA
-  -D ENABLE_PRIVATE_KEY_EXPORT=1
+  -D ENABLE_PRIVATE_KEY_EXPORT=1  ; companion-only: lets the HA MeshCore integration fetch the key to sign map.meshcore.io uploads (no effect on repeater/sensor firmware)
   -D SELF_ADVERT_TYPE=ADV_TYPE_REPEATER  ; advertise as repeater (shows as repeater in apps/map)
   -D DEFAULT_REPEAT_ENABLED
   -D ALLOWED_REPEAT_FREQ_RANGE='{869400,869700}'
